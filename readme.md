@@ -35,11 +35,11 @@ A cutting-edge healthcare surveillance platform designed to overcome the unique 
 
 **Team Members:**
 
-| Name | Role | Institution | Email |
-|-----|------ |-------------|-------|
-| Shakil Ahmed| NSU        |   itshakilbd@gmail.com.com |
+| Name | Institution | Email |
+|----- |-------------|-------|
+| Shakil Ahmed | NSU |   itshakilbd@gmail.com.com |
 | Shahriar Ahmed Seam | BUET | shahriarseam17@gmail.com.com |
-| Khaled Saifullah | AIUB    | khaledsaifullah50956@gmail.com |
+| Khaled Saifullah | AIUB  | khaledsaifullah50956@gmail.com |
 
 ---
 
