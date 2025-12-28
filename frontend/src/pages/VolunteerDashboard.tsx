@@ -30,6 +30,7 @@ const VolunteerDashboard = () => {
   const [offlineQueue, setOfflineQueue] = useState<PatientData[]>([])
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' | 'info' } | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState(0)
 
   // Volunteer info
   const [volunteerName] = useState('Field Volunteer #' + Math.floor(Math.random() * 1000))
@@ -105,20 +106,55 @@ const VolunteerDashboard = () => {
     }
 
     setIsSyncing(true)
+    setSyncProgress(0)
+    
     try {
-      // Mock API call - send all queued records
-      await axios.post('http://localhost:8000/api/data/bulk', { records: offlineQueue })
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 100)
+
+      // Transform queue data to match backend format
+      const recordsToSync = offlineQueue.map(record => ({
+        patientName: record.name,
+        age: record.age,
+        symptoms: record.symptoms,
+        location: record.location,
+        diseaseType: record.symptoms,
+        volunteerId: volunteerName,
+        timestamp: record.timestamp,
+        severity: "Moderate"
+      }))
+
+      // Call backend sync endpoint
+      const response = await axios.post('http://localhost:8000/api/sync', recordsToSync)
       
-      showToast(`✅ Successfully synced ${offlineQueue.length} record${offlineQueue.length !== 1 ? 's' : ''}!`, 'success')
+      clearInterval(progressInterval)
+      setSyncProgress(100)
       
-      // Clear the queue
-      setOfflineQueue([])
-      localStorage.removeItem('offlineQueue')
+      setTimeout(() => {
+        showToast(`✅ ${response.data.message}`, 'success')
+        
+        // Clear the queue
+        setOfflineQueue([])
+        localStorage.removeItem('offlineQueue')
+        setSyncProgress(0)
+      }, 500)
+      
     } catch (error) {
       showToast('❌ Sync failed. Records kept in queue.', 'error')
       console.error('Sync error:', error)
+      setSyncProgress(0)
     } finally {
-      setIsSyncing(false)
+      setTimeout(() => {
+        setIsSyncing(false)
+      }, 600)
     }
   }
 
@@ -206,14 +242,29 @@ const VolunteerDashboard = () => {
                   </div>
                 </div>
                 {!isOfflineMode && (
-                  <button
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="flex items-center gap-2 px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition font-semibold disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? 'Syncing...' : `Sync ${offlineQueue.length} Record${offlineQueue.length !== 1 ? 's' : ''}`}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleSync}
+                      disabled={isSyncing}
+                      className="flex items-center gap-2 px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition font-semibold disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
+                      {isSyncing ? 'Syncing...' : `Sync ${offlineQueue.length} Record${offlineQueue.length !== 1 ? 's' : ''}`}
+                    </button>
+                    
+                    {/* Progress Bar */}
+                    {isSyncing && (
+                      <div className="w-48">
+                        <div className="h-2 bg-yellow-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-yellow-600 transition-all duration-300 ease-out"
+                            style={{ width: `${syncProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-yellow-700 mt-1 text-center">{syncProgress}% Complete</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
