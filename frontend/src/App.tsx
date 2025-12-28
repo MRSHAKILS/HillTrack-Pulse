@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
-import AdminDashboard from './pages/AdminDashboard'
+import AdminDashboard from './pages/AdminDashboard.tsx'
 import VolunteerDashboard from './pages/VolunteerDashboard'
 
 function App() {
