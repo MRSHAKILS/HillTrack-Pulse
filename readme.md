@@ -7,7 +7,7 @@ A cutting-edge healthcare surveillance platform designed to overcome the unique 
 ---
 
 ## 📋 Table of Contents
-
+- [Team Information](#team-information)
 - [Problem Statement](#problem-statement)
 - [Solution Overview](#solution-overview)
 - [Key Features](#key-features)
@@ -21,6 +21,28 @@ A cutting-edge healthcare surveillance platform designed to overcome the unique 
 - [Demo Credentials](#demo-credentials)
 - [Future Enhancements](#future-enhancements)
 - [Team & Acknowledgments](#team--acknowledgments)
+
+
+
+
+
+---
+
+## 👥 Team Information
+
+**Team Name:**  
+`NSU_BUET_AIUB.exe`
+
+**Team Members:**
+
+| Name | Role | Institution | Email |
+|-----|------ |-------------|-------|
+| Shakil Ahmed| NSU        |   itshakilbd@gmail.com.com |
+| Shahriar Ahmed Seam | BUET | shahriarseam17@gmail.com.com |
+| Khaled Saifullah | AIUB    | khaledsaifullah50956@gmail.com |
+
+---
+
 
 ---
 
