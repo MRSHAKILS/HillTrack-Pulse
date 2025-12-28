@@ -4,6 +4,12 @@
 
 An intelligent healthcare platform for Bangladesh's Hill Tracts that works offline, detects disease outbreaks with AI, and optimizes medical supply routes.
 
+## 🎥 Demo Video
+
+[![Watch Demo](https://img.shields.io/badge/▶️_Watch_Demo_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/sAvS6U3bpzE)
+
+**[🔗 Click here to watch the full demo](https://youtu.be/sAvS6U3bpzE)**
+
 ---
 
 ## 📋 Quick Links
