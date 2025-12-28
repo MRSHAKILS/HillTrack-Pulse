@@ -78,6 +78,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **AI Analysis Panel**: One-click DBSCAN clustering to detect epidemic hotspots
 - **Critical Alerts**: Dynamic counter for high-risk clusters
 - **Live Feed Sidebar**: Auto-refreshing stream of field reports (5-second polling)
+- **PDF Report Generation**: One-click download of comprehensive outbreak analysis reports
 - **4-State Dispatch Workflow**:
   1. **Normal**: Blue patient markers, run AI surveillance
   2. **Alert**: Red markers for detected clusters, generate supply route button
@@ -121,6 +122,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **Server**: Uvicorn 0.27.0 (ASGI server)
 - **AI/ML**: Scikit-learn 1.4.0 (DBSCAN clustering)
 - **Data Processing**: NumPy, Pandas
+- **PDF Generation**: ReportLab 4.0+ (professional reports)
 - **Graph Algorithms**: NetworkX (future route optimization)
 
 ### **Development Tools**
@@ -258,7 +260,7 @@ python -m venv venv
 source venv/bin/activate
 
 # Install Python dependencies
-pip install fastapi uvicorn pandas numpy scikit-learn networkx
+pip install fastapi uvicorn pandas numpy scikit-learn networkx reportlab
 
 # Run the backend server
 uvicorn main:app --reload
@@ -344,6 +346,15 @@ npm run dev
    - Click green "DISPATCH MEDICAL TEAM" button in modal
    - Success banner appears at top
    - Confirmation: "Team Dispatched to Jurachhari Village A Cluster"
+
+6. **Generate PDF Reports**
+   - Click "Generate Report" button in left sidebar
+   - PDF automatically downloads with:
+     - System statistics (patients, volunteers, alerts)
+     - AI analysis results
+     - Critical patient details
+     - Outbreak recommendations
+   - Report filename: `HillTrack_Report_YYYYMMDD_HHMMSS.pdf`
 
 ---
 
@@ -439,6 +450,21 @@ http://localhost:8000
 }
 ```
 
+#### `GET /api/generate-report`
+**Description**: Generate comprehensive PDF report with system statistics and AI analysis  
+**Response**: Binary PDF file download  
+**Headers**:
+```
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="HillTrack_Report_20251228_143025.pdf"
+```
+**Report Includes**:
+- System overview statistics table
+- AI-powered cluster detection analysis  
+- Critical patient details
+- Geographic analysis
+- Public health recommendations
+
 ---
 
 ## 📁 Project Structure
@@ -455,11 +481,14 @@ HillTrack-Pulse/
 │   │   ├── components/
 │   │   │   ├── HillMap.tsx           # Leaflet map component
 │   │   │   ├── LogisticsGraph.tsx    # React Flow route visualization
-│   │   │   └── LiveFeed.tsx          # Real-time report sidebar
+│   │   │   ├── LiveFeed.tsx          # Real-time report sidebar
+│   │   │   ├── OutbreakChart.tsx     # Analytics charts
+│   │   │   └── ProtectedRoute.tsx    # Authentication wrapper
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx         # Authentication UI
 │   │   │   ├── AdminDashboard.tsx    # Admin control center
-│   │   │   └── VolunteerDashboard.tsx # Field worker interface
+│   │   │   ├── VolunteerDashboard.tsx # Field worker interface
+│   │   │   └── VolunteerDataEntry.tsx # Offline data form
 │   │   ├── context/
 │   │   │   └── AuthContext.tsx       # Authentication state management
 │   │   ├── App.tsx               # Root component with routing
@@ -469,6 +498,8 @@ HillTrack-Pulse/
 │   ├── tsconfig.json             # TypeScript configuration
 │   └── vite.config.ts            # Vite build configuration
 │
+├── PHASE4_COMPLETE.md            # Phase 4 implementation details
+├── PHASE5_COMPLETE.md            # Phase 5 implementation details
 └── README.md                     # This file
 ```
 
