@@ -2,11 +2,74 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import { Activity, BarChart3, Map, Settings } from 'lucide-react'
 import axios from 'axios'
+import HillMap from './components/HillMap'
+
+// Sample patient data for demonstration
+const samplePatients = [
+  {
+    id: 1,
+    name: 'Patient A',
+    latitude: 22.6533,
+    longitude: 92.1789,
+    disease_type: 'Suspected Malaria',
+    severity: 'High',
+    age: 34,
+    date: '2025-12-27'
+  },
+  {
+    id: 2,
+    name: 'Patient B',
+    latitude: 22.6600,
+    longitude: 92.1850,
+    disease_type: 'Suspected Malaria',
+    severity: 'Critical',
+    age: 28,
+    date: '2025-12-27'
+  },
+  {
+    id: 3,
+    name: 'Patient C',
+    latitude: 22.6450,
+    longitude: 92.1720,
+    disease_type: 'Routine Checkup',
+    age: 45,
+    date: '2025-12-28'
+  },
+  {
+    id: 4,
+    name: 'Patient D',
+    latitude: 22.6700,
+    longitude: 92.1900,
+    disease_type: 'Routine Checkup',
+    age: 22,
+    date: '2025-12-28'
+  },
+  {
+    id: 5,
+    name: 'Patient E',
+    latitude: 22.6580,
+    longitude: 92.1950,
+    disease_type: 'Suspected Malaria',
+    severity: 'Moderate',
+    age: 31,
+    date: '2025-12-26'
+  },
+  {
+    id: 6,
+    name: 'Patient F',
+    latitude: 22.6400,
+    longitude: 92.1650,
+    disease_type: 'Routine Checkup',
+    age: 56,
+    date: '2025-12-28'
+  }
+]
 
 function App() {
   const [count, setCount] = useState(0)
   const [backendStatus, setBackendStatus] = useState<string>('Loading...')
   const [isConnected, setIsConnected] = useState(false)
+  const [patients, setPatients] = useState(samplePatients)
 
   useEffect(() => {
     // Fetch status from backend
@@ -115,9 +178,21 @@ function App() {
               </div>
             } />
             <Route path="/map" element={
-              <div className="bg-white rounded-lg shadow-lg p-8">
-                <h2 className="text-2xl font-bold mb-4">Map View</h2>
-                <p className="text-gray-600">Map functionality will be implemented here</p>
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h2 className="text-2xl font-bold mb-2 text-gray-800">Patient Location Map</h2>
+                  <p className="text-gray-600 mb-4">
+                    Interactive visualization of patient locations in Rangamati Hill District
+                  </p>
+                  <div className="flex gap-4 text-sm text-gray-600">
+                    <span>📍 Total Patients: {patients.length}</span>
+                    <span>🔴 Malaria Cases: {patients.filter(p => p.disease_type.includes('Malaria')).length}</span>
+                    <span>🟢 Routine Checkups: {patients.filter(p => !p.disease_type.includes('Malaria')).length}</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-lg p-4" style={{ height: '600px' }}>
+                  <HillMap patients={patients} />
+                </div>
               </div>
             } />
             <Route path="/settings" element={
