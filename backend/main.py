@@ -27,13 +27,19 @@ def health_check():
     return {"status": "healthy"}
 
 # Store data in memory for the demo
-current_data = generate_hill_data()
+current_data = generate_hill_data()  # Start with background noise
 recent_reports: List[Dict] = []  # Store recent synced reports
+next_patient_id = len(current_data) + 1  # Track IDs for new patients
 
 @app.get("/api/data")
 def get_raw_data():
     """Returns the raw data (simulating offline sync)"""
-    return current_data
+    return {
+        "patients": current_data,
+        "total_count": len(current_data),
+        "background_data": len([p for p in current_data if p['id'] <= len(generate_hill_data())]),
+        "volunteer_data": len([p for p in current_data if p['id'] > len(generate_hill_data())])
+    }
 
 @app.post("/api/analyze")
 def run_ai_analysis():
@@ -70,17 +76,35 @@ def run_ai_analysis():
 def sync_volunteer_data(records: List[Dict]):
     """
     Accepts volunteer offline queue data and syncs it to the backend.
+    APPENDS real human input to current_data (doesn't overwrite).
     Stores recent reports for the live feed.
     """
-    global recent_reports
+    global current_data, recent_reports, next_patient_id
     
     synced_count = len(records)
     
-    # Add to recent reports with timestamp
+    # ADD the real human input to the patient data list
     for record in records:
+        # Convert volunteer submission to patient data format
+        # Use provided lat/lng from smart dropdown (EXACT coordinates for AI clustering)
+        patient_entry = {
+            "id": next_patient_id,
+            "name": record.get("patientName", f"Patient {next_patient_id}"),
+            "lat": record.get("lat", 22.65),  # Use exact coordinates from dropdown
+            "lng": record.get("lng", 92.18),  # Use exact coordinates from dropdown
+            "age": int(record.get("age", 30)) if str(record.get("age", "")).isdigit() else 30,
+            "date": record.get("timestamp", datetime.now().isoformat())[:10],
+            "disease_type": record.get("symptoms", record.get("diseaseType", "Unknown Symptoms")),
+            "severity": record.get("severity", "Moderate"),
+            "status": "Normal"  # Will be updated by AI analysis if in cluster
+        }
+        current_data.append(patient_entry)
+        next_patient_id += 1
+        
+        # Also add to recent reports for live feed
         report = {
             "patient_name": record.get("patientName", "Unknown Patient"),
-            "disease": record.get("diseaseType", "N/A"),
+            "disease": record.get("diseaseType", record.get("symptoms", "N/A")),
             "location": record.get("location", "Unknown"),
             "volunteer_id": record.get("volunteerId", "VOL-???"),
             "timestamp": datetime.now().isoformat(),
@@ -94,7 +118,7 @@ def sync_volunteer_data(records: List[Dict]):
     return {
         "status": "success",
         "synced_count": synced_count,
-        "message": f"Successfully synced {synced_count} records from field volunteer."
+        "message": f"Successfully synced {synced_count} records from field volunteer. Total patients: {len(current_data)}"
     }
 
 @app.get("/api/recent-reports")

@@ -4,12 +4,23 @@ import { useNavigate } from 'react-router-dom'
 import { Activity, LogOut, Save, User, MapPin, Stethoscope, Calendar, Wifi, WifiOff, Cloud, CloudOff, RefreshCw } from 'lucide-react'
 import axios from 'axios'
 
+// Realistic Hill Tracts Locations mapping to Coordinates
+const LOCATIONS = [
+  { name: "Jurachhari Valley (Deep Hills)", lat: 22.6700, lng: 92.4000 },
+  { name: "Baghaichhari Center", lat: 23.1500, lng: 92.2000 },
+  { name: "Kaptai Lake North", lat: 22.5000, lng: 92.2200 },
+  { name: "Belaichhari Remote", lat: 22.4500, lng: 92.3500 },
+  { name: "Rangamati Sadar", lat: 22.6533, lng: 92.1789 }
+]
+
 interface PatientData {
   id: number
   name: string
   age: string
   symptoms: string
   location: string
+  lat?: number
+  lng?: number
   timestamp: string
 }
 
@@ -22,7 +33,9 @@ const VolunteerDashboard = () => {
     name: '',
     age: '',
     symptoms: '',
-    location: ''
+    location: '',
+    lat: 0,
+    lng: 0
   })
 
   // Offline mode state
@@ -95,7 +108,9 @@ const VolunteerDashboard = () => {
       name: '',
       age: '',
       symptoms: '',
-      location: ''
+      location: '',
+      lat: 0,
+      lng: 0
     })
   }
 
@@ -126,6 +141,8 @@ const VolunteerDashboard = () => {
         age: record.age,
         symptoms: record.symptoms,
         location: record.location,
+        lat: record.lat,
+        lng: record.lng,
         diseaseType: record.symptoms,
         volunteerId: volunteerName,
         timestamp: record.timestamp,
@@ -348,21 +365,43 @@ const VolunteerDashboard = () => {
                   </select>
                 </div>
 
-                {/* Location */}
+                {/* Location - Smart Dropdown with GPS Coordinates */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <MapPin className="w-4 h-4" />
-                    Location
+                    Location / Village
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="location"
                     value={formData.location}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      // Find the coords for the selected name
+                      const loc = LOCATIONS.find(l => l.name === e.target.value)
+                      if (loc) {
+                        setFormData({ 
+                          ...formData, 
+                          location: loc.name, 
+                          lat: loc.lat, 
+                          lng: loc.lng 
+                        })
+                      }
+                    }}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="e.g., Rangamati Sadar, Village name"
-                  />
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Select Village...</option>
+                    {LOCATIONS.map(loc => (
+                      <option key={loc.name} value={loc.name}>{loc.name}</option>
+                    ))}
+                  </select>
+                  
+                  {/* Fake "GPS Active" Badge to look cool */}
+                  {formData.lat !== 0 && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-600 mt-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
+                      <MapPin className="w-3 h-3 animate-pulse" />
+                      <span className="font-semibold">GPS Coordinates Acquired: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}

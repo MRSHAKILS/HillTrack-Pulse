@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface AuthContextType {
   userType: 'admin' | 'volunteer' | null
@@ -11,6 +11,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userType, setUserType] = useState<'admin' | 'volunteer' | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const savedUserType = localStorage.getItem('userType')
+    if (savedUserType === 'admin' || savedUserType === 'volunteer') {
+      setUserType(savedUserType)
+    }
+    setIsLoading(false)
+  }, [])
 
   const login = (type: 'admin' | 'volunteer') => {
     setUserType(type)
@@ -23,6 +33,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const isAuthenticated = userType !== null
+
+  // Don't render children until we've checked localStorage
+  if (isLoading) {
+    return null
+  }
 
   return (
     <AuthContext.Provider value={{ userType, isAuthenticated, login, logout }}>
