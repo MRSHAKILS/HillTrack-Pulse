@@ -11,7 +11,9 @@ import {
   Brain,
   Package,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  Terminal,
+  Radio
 } from 'lucide-react'
 import HillMap from '../components/HillMap'
 import LogisticsGraph from '../components/LogisticsGraph'
@@ -92,7 +94,17 @@ const AdminDashboard = () => {
   
   // Phase 7: Dispatch Workflow States
   const [showLogisticsModal, setShowLogisticsModal] = useState(false)
-  const [isDispatched, setIsDispatched] = useState(false)
+  const [showMissionModal, setShowMissionModal] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [missionStatus, setMissionStatus] = useState<'idle' | 'dispatched' | 'resolved'>('idle')
+  
+  // SMS Gateway & System Logs
+  const [systemLogs, setSystemLogs] = useState<{time: string, message: string, type: 'info' | 'success' | 'warning'}[]>([
+    { time: new Date().toLocaleTimeString(), message: 'System initialized. GSM Gateway online.', type: 'info' },
+    { time: new Date().toLocaleTimeString(), message: 'Connected to Grameenphone API (Backup: Robi, Banglalink)', type: 'info' }
+  ])
 
   useEffect(() => {
     // Fetch status from backend
@@ -114,6 +126,15 @@ const AdminDashboard = () => {
     navigate('/')
   }
 
+  const addLog = (message: string, type: 'info' | 'success' | 'warning' = 'info') => {
+    const newLog = {
+      time: new Date().toLocaleTimeString(),
+      message,
+      type
+    }
+    setSystemLogs(prev => [...prev, newLog])
+  }
+
   const handleRunAI = async () => {
     if (!isConnected) {
       alert('Backend is offline. Cannot run AI analysis.')
@@ -129,6 +150,9 @@ const AdminDashboard = () => {
       setAiResult(result)
       
       if (result.cluster_detected) {
+        addLog(`AI ALERT: Epidemic cluster detected (${result.data.filter((p: any) => p.cluster_id !== -1).length} patients)`, 'warning')
+        addLog('DBSCAN analysis complete. Cluster ID: #CLUSTER-402', 'info')
+        
         // Update patients with AI results - turn markers RED for clustered patients
         const updatedPatients = result.data.map((patient: any) => ({
           id: patient.id || Math.random(),
@@ -169,13 +193,72 @@ const AdminDashboard = () => {
     setShowLogisticsModal(true)
   }
 
-  const handleDispatch = () => {
-    setIsDispatched(true)
-    setShowLogisticsModal(false)
-    // Auto-hide success banner after 10 seconds
-    setTimeout(() => {
-      setIsDispatched(false)
-    }, 10000)
+  const handleMissionAction = () => {
+    if (missionStatus === 'idle') {
+      // Step 1: Dispatch team with SMS Gateway
+      setShowLogisticsModal(false)
+      setIsLoading(true)
+      
+      addLog('Preparing SMS payload for field team...', 'info')
+      
+      setTimeout(() => {
+        // Simulate SMS Gateway API call
+        const smsPayload = {
+          recipient: '+8801712345678 (Team Alpha Leader)',
+          message: `🚨 EMERGENCY DISPATCH\nMission: #CLUSTER-402\nLocation: Jurachhari Valley\nCoords: 22.6533, 92.1789\nPriority: HIGH\nPatients: 5\nRoute: See App`,
+          gateway: 'Grameenphone SMS API',
+          clusterId: '#CLUSTER-402'
+        }
+        
+        addLog(`GATEWAY: Sending SMS to ${smsPayload.recipient}`, 'warning')
+        addLog(`PAYLOAD: Mission ${smsPayload.clusterId} | Coords: 22.6533, 92.1789`, 'info')
+        addLog(`SMS delivered via ${smsPayload.gateway} ✓`, 'success')
+        addLog('Field team notified. Awaiting confirmation...', 'info')
+        
+        setIsLoading(false)
+        setMissionStatus('dispatched')
+        
+        // Show SMS confirmation alert
+        alert(
+          `📨 SMS SENT via GSM Gateway\n\n` +
+          `Recipient: +88017*** (Team Alpha)\n` +
+          `Mission: #CLUSTER-402\n` +
+          `Coordinates: 22.6533, 92.1789\n` +
+          `Location: Jurachhari Valley\n` +
+          `Priority: HIGH\n` +
+          `Patients: 5\n\n` +
+          `✅ Message delivered via Grameenphone API\n` +
+          `(Fallback networks: Robi, Banglalink)`
+        )
+        
+        setToastMessage('⚠️ Medical Team En Route to Cluster #402')
+        setShowToast(true)
+        
+        setTimeout(() => setShowToast(false), 3000)
+        
+        // Simulate field team acknowledgment
+        setTimeout(() => {
+          addLog('SMS ACK received from Team Alpha (+88017***)', 'success')
+          addLog('Team departed from Upazila Health Complex', 'info')
+        }, 3000)
+      }, 1500)
+    } else if (missionStatus === 'dispatched') {
+      // Step 2: Mark mission complete
+      setIsLoading(true)
+      
+      addLog('Receiving mission completion report...', 'info')
+      
+      setTimeout(() => {
+        addLog('All 5 patients treated successfully', 'success')
+        addLog('Antimalarial medication distributed', 'success')
+        addLog('Mission #CLUSTER-402 marked COMPLETE', 'success')
+        
+        setIsLoading(false)
+        setMissionStatus('resolved')
+        setShowMissionModal(true)
+      }, 1000)
+    }
+    // Step 3: If resolved, do nothing
   }
 
   const malariaCount = patients.filter(p => p.disease_type.includes('Malaria')).length
@@ -184,8 +267,8 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 shadow-xl">
+      {/* Sidebar - Fixed Position */}
+      <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 shadow-xl overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
@@ -240,26 +323,113 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* AI Surveillance Panel */}
+            <div className="pt-8 mt-4 border-t border-gray-200">
+              <div className="px-2">
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-2 border border-purple-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Brain className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <h4 className="font-bold text-gray-800 text-sm">AI Surveillance</h4>
+                      <p className="text-xs text-gray-500">DBSCAN Clustering</p>
+                    </div>
+                  </div>
+
+                  {aiResult && (
+                    <div className={`mb-3 p-2 rounded-lg text-xs ${
+                      aiResult.cluster_detected 
+                        ? 'bg-red-100 border border-red-300' 
+                        : 'bg-green-100 border border-green-300'
+                    }`}>
+                      <p className={`font-semibold ${
+                        aiResult.cluster_detected ? 'text-red-800' : 'text-green-800'
+                      }`}>
+                        {aiResult.cluster_detected ? '🚨 CLUSTER' : '✅ CLEAR'}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleRunAI}
+                    disabled={isAnalyzing || !isConnected}
+                    className={`w-full py-2 rounded-lg font-semibold text-white text-xs transition flex items-center justify-center gap-2 ${
+                      isAnalyzing 
+                        ? 'bg-purple-400 cursor-wait' 
+                        : !isConnected
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                    }`}
+                  >
+                    <Brain className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                    {isAnalyzing ? 'ANALYZING...' : 'RUN AI'}
+                  </button>
+
+                  {aiResult && aiResult.cluster_detected && (
+                    <button
+                      onClick={missionStatus === 'idle' ? handleGenerateRoute : handleMissionAction}
+                      disabled={isLoading}
+                      className={`w-full mt-2 py-2 rounded-lg font-semibold text-white text-xs transition flex items-center justify-center gap-2 ${
+                        missionStatus === 'resolved' 
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 cursor-default' 
+                          : missionStatus === 'dispatched'
+                          ? 'bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-700 hover:to-amber-700 animate-pulse'
+                          : 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 animate-pulse'
+                      } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          LOADING...
+                        </>
+                      ) : missionStatus === 'resolved' ? (
+                        <>
+                          🎉 OUTBREAK RESOLVED
+                        </>
+                      ) : missionStatus === 'dispatched' ? (
+                        <>
+                          ⏳ MARK COMPLETE
+                        </>
+                      ) : (
+                        <>
+                          🚨 DISPATCH TEAM
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-purple-200">
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Algorithm:</span>
+                        <span className="font-semibold text-gray-800">DBSCAN</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Min Samples:</span>
+                        <span className="font-semibold text-gray-800">3</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Epsilon:</span>
+                        <span className="font-semibold text-gray-800">500m</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </nav>
         </div>
 
         <div className="absolute bottom-0 w-64 p-6 border-t border-gray-200 bg-gray-50">
-          <div className="mb-4">
-            <p className="text-xs text-gray-500 font-semibold">LOGGED IN AS</p>
-            <p className="font-semibold text-gray-800">{userType === 'admin' ? 'Administrator' : 'User'}</p>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Logged as</p>
+            <p className="font-semibold text-gray-800 text-sm">{userType === 'admin' ? 'Administrator' : 'User'}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition shadow-lg shadow-red-200"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Logout</span>
-          </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Main Content - Add left margin to account for fixed sidebar */}
+      <main className="flex-1 ml-64 overflow-y-auto">
         {/* Header */}
         <header className="bg-white border-b border-gray-200">
           <div className="px-8 py-6">
@@ -281,33 +451,19 @@ const AdminDashboard = () => {
                     {isConnected ? 'Backend Online' : 'Backend Offline'}
                   </span>
                 </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition shadow-lg"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="font-semibold text-sm">Logout</span>
+                </button>
               </div>
             </div>
           </div>
         </header>
 
         <div className="p-8">
-          {/* State 3: Success Banner */}
-          {isDispatched && (
-            <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-2xl p-6 border-2 border-green-300 animate-pulse">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white rounded-full">
-                  <Package className="w-8 h-8 text-green-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-1">✅ Team Dispatched Successfully!</h3>
-                  <p className="text-green-50 text-lg">Medical team en route to Jurachhari Village A Cluster. Route sent to volunteer mobile devices.</p>
-                </div>
-                <button
-                  onClick={() => setIsDispatched(false)}
-                  className="text-white hover:text-green-100 transition text-xl font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Top Cards - Premium Light Mode - All in a Row */}
           <div className="grid grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200 hover:shadow-xl transition">
@@ -374,80 +530,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="relative" style={{ height: '600px' }}>
-                  <HillMap patients={patients} />
-
-                  {/* Floating AI Panel */}
-                  <div className="absolute top-4 right-4 z-[1000]">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 border-2 border-purple-300 max-w-sm">
-                      <div className="flex items-center gap-3 mb-4">
-                        <Brain className="w-8 h-8 text-purple-600" />
-                        <div>
-                          <h4 className="font-bold text-gray-800">AI Surveillance</h4>
-                          <p className="text-xs text-gray-500">DBSCAN Clustering</p>
-                        </div>
-                      </div>
-
-                      {aiResult && (
-                        <div className={`mb-4 p-3 rounded-lg ${
-                          aiResult.cluster_detected 
-                            ? 'bg-red-100 border border-red-300' 
-                            : 'bg-green-100 border border-green-300'
-                        }`}>
-                          <p className={`text-sm font-semibold ${
-                            aiResult.cluster_detected ? 'text-red-800' : 'text-green-800'
-                          }`}>
-                            {aiResult.cluster_detected ? '🚨 CLUSTER DETECTED' : '✅ NO CLUSTERS'}
-                          </p>
-                          <p className="text-xs text-gray-700 mt-1">
-                            {aiResult.message}
-                          </p>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={handleRunAI}
-                        disabled={isAnalyzing || !isConnected}
-                        className={`w-full py-3 rounded-lg font-bold text-white transition flex items-center justify-center gap-2 ${
-                          isAnalyzing 
-                            ? 'bg-purple-400 cursor-wait' 
-                            : !isConnected
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg'
-                        }`}
-                      >
-                        <Brain className={`w-5 h-5 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                        {isAnalyzing ? 'ANALYZING...' : 'RUN AI SURVEILLANCE'}
-                      </button>
-
-                      {/* State 1: Show Generate Route button after cluster detected */}
-                      {aiResult && aiResult.cluster_detected && !isDispatched && (
-                        <button
-                          onClick={handleGenerateRoute}
-                          className="w-full mt-3 py-3 rounded-lg font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg transition flex items-center justify-center gap-2 animate-pulse"
-                        >
-                          <Package className="w-5 h-5" />
-                          GENERATE SUPPLY ROUTE
-                        </button>
-                      )}
-
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="space-y-2 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Algorithm:</span>
-                            <span className="font-semibold text-gray-800">DBSCAN</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Min Samples:</span>
-                            <span className="font-semibold text-gray-800">3</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Epsilon:</span>
-                            <span className="font-semibold text-gray-800">0.005 (~500m)</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <HillMap patients={patients} missionStatus={missionStatus} />
                 </div>
               </div>
 
@@ -687,11 +770,149 @@ const AdminDashboard = () => {
 
               {/* Dispatch Button */}
               <button
-                onClick={handleDispatch}
-                className="w-full py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg transition flex items-center justify-center gap-3"
+                onClick={handleMissionAction}
+                disabled={isLoading}
+                className="w-full py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Package className="w-6 h-6" />
-                DISPATCH MEDICAL TEAM
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                    DISPATCHING...
+                  </>
+                ) : (
+                  <>
+                    <Package className="w-6 h-6" />
+                    DISPATCH MEDICAL TEAM
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mission Success Modal */}
+      {showMissionModal && missionStatus === 'resolved' && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[3000] p-8">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border-4 border-green-500 transform animate-bounce-in">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-3">
+                  <div className="text-5xl">✅</div>
+                  <div>
+                    <h2 className="text-3xl font-black">MISSION COMPLETE</h2>
+                    <p className="text-green-100 text-sm">Cluster Contained Successfully</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowMissionModal(false)}
+                  className="text-white hover:text-green-200 transition text-2xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              {/* Success Card */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 mb-6">
+                <div className="text-center mb-6">
+                  <div className="inline-block p-4 bg-green-100 rounded-full mb-4">
+                    <div className="text-6xl">🎉</div>
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-800 mb-2">OUTBREAK RESOLVED</h3>
+                  <p className="text-gray-600">Medical team has successfully contained Cluster #402</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Mission ID</p>
+                    <p className="text-2xl font-black text-gray-800 font-mono">#ALPHA-99</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Status</p>
+                    <p className="text-2xl font-black text-green-600">✅ COMPLETE</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t-2 border-dashed border-amber-300">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Destination</p>
+                  <p className="text-xl font-bold text-gray-800 mb-3">📍 Jurachhari Valley Cluster</p>
+                  
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Route Plan</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-600 font-bold">1.</span>
+                      <span className="text-gray-700">Upazila Health Complex</span>
+                      <span className="text-gray-400">→</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-600 font-bold">2.</span>
+                      <span className="text-gray-700">Kaptai Lake Boat Terminal</span>
+                      <span className="text-gray-400">→</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-600 font-bold">3.</span>
+                      <span className="text-gray-700">Jurachhari Base Camp</span>
+                      <span className="text-gray-400">→</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-600 font-bold">4.</span>
+                      <span className="text-gray-700 font-bold">Critical Zone (Village A)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t-2 border-dashed border-amber-300">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Estimated Arrival</p>
+                  <p className="text-lg font-bold text-gray-800">3h 20min</p>
+                </div>
+              </div>
+
+              {/* Status Banner */}
+              <div className="bg-green-100 border-2 border-green-400 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-green-800 text-lg">✅ ALL PATIENTS TREATED</p>
+                    <p className="text-green-700 text-sm">Antimalarial medication distributed. Follow-up scheduled.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => setShowMissionModal(false)}
+                className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg transition"
+              >
+                CLOSE MISSION REPORT
+              </button>
+
+              <p className="text-center text-xs text-gray-500 mt-4">
+                Mission created at {new Date().toLocaleTimeString()} • HillTrack Pulse Command Center
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-8 right-8 z-[5000] animate-slide-in">
+          <div className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white rounded-xl shadow-2xl p-4 border-2 border-yellow-300 max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">⚠️</div>
+              <div>
+                <p className="font-bold text-lg">{toastMessage}</p>
+                <p className="text-yellow-100 text-sm">Track progress on the live map</p>
+              </div>
+              <button
+                onClick={() => setShowToast(false)}
+                className="text-white hover:text-yellow-100 transition text-xl font-bold ml-2"
+              >
+                ✕
               </button>
             </div>
           </div>
