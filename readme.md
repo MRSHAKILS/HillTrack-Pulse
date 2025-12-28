@@ -20,7 +20,7 @@ A cutting-edge healthcare surveillance platform designed to overcome the unique 
 - [Project Structure](#project-structure)
 - [Demo Credentials](#demo-credentials)
 - [Future Enhancements](#future-enhancements)
-- [Team & Acknowledgments](#team--acknowledgments)
+
 
 
 
