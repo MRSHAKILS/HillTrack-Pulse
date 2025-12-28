@@ -51,11 +51,20 @@ next_patient_id = len(current_data) + 1  # Track IDs for new patients
 @app.get("/api/data")
 def get_raw_data():
     """Returns the raw data (simulating offline sync)"""
+    initial_count = len(generate_hill_data())
+    try:
+        background_count = len([p for p in current_data if int(p['id']) <= initial_count])
+        volunteer_count = len([p for p in current_data if int(p['id']) > initial_count])
+    except (ValueError, TypeError):
+        # If ID conversion fails, count all as volunteer data
+        background_count = initial_count if len(current_data) >= initial_count else len(current_data)
+        volunteer_count = max(0, len(current_data) - initial_count)
+    
     return {
         "patients": current_data,
         "total_count": len(current_data),
-        "background_data": len([p for p in current_data if p['id'] <= len(generate_hill_data())]),
-        "volunteer_data": len([p for p in current_data if p['id'] > len(generate_hill_data())])
+        "background_data": background_count,
+        "volunteer_data": volunteer_count
     }
 
 @app.post("/api/analyze")

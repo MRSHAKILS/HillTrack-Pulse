@@ -5,7 +5,7 @@ import {
   Activity, LogOut, Save, User, MapPin, Stethoscope, Calendar, 
   Wifi, WifiOff, Cloud, CloudOff, RefreshCw, 
   Clock, CheckCircle2, AlertTriangle, Database,
-  BadgeCheck, Shield, FileText, Hash
+  BadgeCheck, Shield, FileText, Hash, Trophy, Medal, Crown
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -16,6 +16,22 @@ const LOCATIONS = [
   { name: "Kaptai Lake North", lat: 22.5000, lng: 92.2200 },
   { name: "Belaichhari Remote", lat: 22.4500, lng: 92.3500 },
   { name: "Rangamati Sadar", lat: 22.6533, lng: 92.1789 }
+]
+
+// Dummy volunteer leaderboard data
+const VOLUNTEER_LEADERBOARD = [
+  { id: 'V10023', name: 'Rahim Ahmed', submissions: 156, region: 'Rangamati' },
+  { id: 'V10045', name: 'Fatima Begum', submissions: 142, region: 'Khagrachhari' },
+  { id: 'V10012', name: 'Kamal Hossain', submissions: 128, region: 'Bandarban' },
+  { id: 'V10078', name: 'Shirin Akter', submissions: 115, region: 'Rangamati' },
+  { id: 'V10034', name: 'Abdul Karim', submissions: 98, region: 'Khagrachhari' },
+  { id: 'V12345', name: 'Current User', submissions: 87, region: 'Chittagong Hill Tracts' }, // Current user
+  { id: 'V10089', name: 'Nusrat Jahan', submissions: 76, region: 'Bandarban' },
+  { id: 'V10056', name: 'Mohammad Ali', submissions: 65, region: 'Rangamati' },
+  { id: 'V10067', name: 'Taslima Khatun', submissions: 54, region: 'Khagrachhari' },
+  { id: 'V10091', name: 'Rafiq Islam', submissions: 43, region: 'Bandarban' },
+  { id: 'V10102', name: 'Hasina Parveen', submissions: 32, region: 'Rangamati' },
+  { id: 'V10113', name: 'Jamal Uddin', submissions: 21, region: 'Khagrachhari' },
 ]
 
 interface PatientData {
@@ -54,7 +70,7 @@ const VolunteerDashboard = () => {
   const [volunteerName] = useState('Field Volunteer #V12345')
   
   // Active view state
-  const [activeView, setActiveView] = useState<'dataEntry' | 'credentials'>('dataEntry')
+  const [activeView, setActiveView] = useState<'dataEntry' | 'credentials' | 'leaderboard'>('dataEntry')
 
   // Load offline queue from localStorage on mount
   useEffect(() => {
@@ -247,6 +263,17 @@ const VolunteerDashboard = () => {
             >
               <BadgeCheck className="w-5 h-5" />
               <span>Credentials</span>
+            </button>
+            <button
+              onClick={() => setActiveView('leaderboard')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+                activeView === 'leaderboard'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Trophy className="w-5 h-5" />
+              <span>Leaderboard</span>
             </button>
           </nav>
 
@@ -463,6 +490,126 @@ const VolunteerDashboard = () => {
                   <p className="text-sm text-gray-500">
                     This credential serves as official proof of authorization for field health data collection under the HillTrack Pulse program. Present this when required for verification purposes.
                   </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeView === 'leaderboard' ? (
+          /* Leaderboard View */
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              <div className="p-6 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-6 h-6 text-amber-600" />
+                  <h3 className="font-bold text-gray-800 text-lg">Volunteer Leaderboard</h3>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Top performers ranked by patient data submissions</p>
+              </div>
+              
+              <div className="p-6">
+                {/* Top 3 Podium */}
+                <div className="flex justify-center items-end gap-4 mb-8">
+                  {/* 2nd Place */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center shadow-lg mb-2">
+                      <span className="text-white font-bold text-xl">2</span>
+                    </div>
+                    <div className="bg-gray-100 rounded-t-xl p-3 text-center" style={{ height: '80px', width: '100px' }}>
+                      <p className="font-bold text-gray-800 text-sm truncate">{VOLUNTEER_LEADERBOARD[1].name}</p>
+                      <p className="text-xs text-gray-500">{VOLUNTEER_LEADERBOARD[1].submissions} submissions</p>
+                    </div>
+                  </div>
+                  
+                  {/* 1st Place */}
+                  <div className="flex flex-col items-center">
+                    <Crown className="w-8 h-8 text-amber-500 mb-1" />
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl mb-2">
+                      <span className="text-white font-bold text-2xl">1</span>
+                    </div>
+                    <div className="bg-amber-100 rounded-t-xl p-3 text-center" style={{ height: '100px', width: '110px' }}>
+                      <p className="font-bold text-gray-800 text-sm truncate">{VOLUNTEER_LEADERBOARD[0].name}</p>
+                      <p className="text-xs text-gray-500">{VOLUNTEER_LEADERBOARD[0].submissions} submissions</p>
+                      <Medal className="w-5 h-5 text-amber-600 mx-auto mt-1" />
+                    </div>
+                  </div>
+                  
+                  {/* 3rd Place */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-300 to-orange-500 flex items-center justify-center shadow-lg mb-2">
+                      <span className="text-white font-bold text-lg">3</span>
+                    </div>
+                    <div className="bg-orange-50 rounded-t-xl p-3 text-center" style={{ height: '60px', width: '90px' }}>
+                      <p className="font-bold text-gray-800 text-sm truncate">{VOLUNTEER_LEADERBOARD[2].name}</p>
+                      <p className="text-xs text-gray-500">{VOLUNTEER_LEADERBOARD[2].submissions} submissions</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Full Leaderboard List */}
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500 font-semibold mb-3 px-2">ALL VOLUNTEERS</p>
+                  {VOLUNTEER_LEADERBOARD.map((volunteer, index) => {
+                    const isCurrentUser = volunteer.id === 'V12345'
+                    const rank = index + 1
+                    return (
+                      <div 
+                        key={volunteer.id}
+                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                          isCurrentUser 
+                            ? 'bg-emerald-50 border-emerald-300 shadow-md' 
+                            : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {/* Rank */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+                          rank === 1 ? 'bg-amber-500 text-white' :
+                          rank === 2 ? 'bg-gray-400 text-white' :
+                          rank === 3 ? 'bg-orange-400 text-white' :
+                          'bg-gray-200 text-gray-600'
+                        }`}>
+                          {rank}
+                        </div>
+                        
+                        {/* Avatar & Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-semibold ${isCurrentUser ? 'text-emerald-800' : 'text-gray-800'}`}>
+                              {volunteer.name}
+                              {isCurrentUser && <span className="ml-2 text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">YOU</span>}
+                            </p>
+                          </div>
+                          <p className="text-xs text-gray-500">ID: {volunteer.id} • {volunteer.region}</p>
+                        </div>
+                        
+                        {/* Submissions Count */}
+                        <div className="text-right">
+                          <p className={`font-bold text-lg ${isCurrentUser ? 'text-emerald-600' : 'text-gray-800'}`}>
+                            {volunteer.submissions}
+                          </p>
+                          <p className="text-xs text-gray-500">submissions</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                
+                {/* Your Rank Summary */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                        <Trophy className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg">Your Rank: #6</p>
+                        <p className="text-sm text-emerald-100">Keep submitting to climb the leaderboard!</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold">87</p>
+                      <p className="text-xs text-emerald-100">Total Submissions</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

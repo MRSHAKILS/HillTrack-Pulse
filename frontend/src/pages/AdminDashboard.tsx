@@ -138,7 +138,42 @@ const AdminDashboard = () => {
       }
     }
     fetchStatus()
-  }, [])
+
+    // Fetch patient data from backend periodically
+    const fetchPatientData = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/data')
+        if (response.data.patients && response.data.patients.length > 0) {
+          // Transform backend format to frontend format
+          // Reset cluster data if AI hasn't been run yet
+          const transformedPatients = response.data.patients.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            latitude: p.lat,
+            longitude: p.lng,
+            disease_type: p.disease_type,
+            severity: p.severity || 'Moderate',
+            age: p.age,
+            date: p.date,
+            // Only show cluster status if AI has been run (aiResult exists)
+            status: aiResult ? (p.status || 'Normal') : 'Normal',
+            cluster_id: aiResult ? p.cluster_id : undefined
+          }))
+          setPatients(transformedPatients)
+        }
+      } catch (error) {
+        console.error('Failed to fetch patient data:', error)
+      }
+    }
+    
+    // Initial fetch
+    fetchPatientData()
+    
+    // Poll every 5 seconds for new patient data
+    const interval = setInterval(fetchPatientData, 5000)
+    
+    return () => clearInterval(interval)
+  }, [aiResult])
 
   const handleLogout = () => {
     logout()
