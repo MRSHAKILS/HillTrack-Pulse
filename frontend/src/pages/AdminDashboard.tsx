@@ -102,6 +102,8 @@ const AdminDashboard = () => {
   const [activeVolunteers] = useState(12)
   const [pendingSyncs] = useState(5)
   const [criticalAlerts, setCriticalAlerts] = useState(0)
+  const [activeClusters, setActiveClusters] = useState(0)
+  const [teamsDeployed, setTeamsDeployed] = useState(0)
   
   // Phase 7: Dispatch Workflow States
   const [showLogisticsModal, setShowLogisticsModal] = useState(false)
@@ -174,6 +176,9 @@ const AdminDashboard = () => {
       if (result.cluster_detected) {
         addLog(`AI ALERT: Epidemic cluster detected (${result.data.filter((p: any) => p.cluster_id !== -1).length} patients)`, 'warning')
         addLog('DBSCAN analysis complete. Cluster ID: #CLUSTER-402', 'info')
+        
+        // Increment active clusters count
+        setActiveClusters(prev => prev + 1)
         
         // Update patients with AI results - turn markers RED for clustered patients
         const updatedPatients = result.data.map((patient: any) => ({
@@ -272,6 +277,9 @@ const AdminDashboard = () => {
         setShowLogisticsGraph(true)
         setNearestTeamName(team.name)
         
+        // Increment teams deployed count
+        setTeamsDeployed(prev => prev + 1)
+        
         addLog(`AI selected nearest unit: ${team.name} (${distance} km away)`, 'success')
         
         // Simulate SMS Gateway API call
@@ -326,6 +334,10 @@ const AdminDashboard = () => {
         addLog('All 5 patients treated successfully', 'success')
         addLog('Antimalarial medication distributed', 'success')
         addLog('Mission #CLUSTER-402 marked COMPLETE', 'success')
+        
+        // Decrement active clusters and teams deployed
+        setActiveClusters(prev => Math.max(0, prev - 1))
+        setTeamsDeployed(prev => Math.max(0, prev - 1))
         
         setIsLoading(false)
         setMissionStatus('resolved')
@@ -556,7 +568,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-xs text-rose-700 font-bold uppercase tracking-wide mb-2">Total Cases</p>
-                  <p className="text-5xl font-black text-rose-900">142</p>
+                  <p className="text-5xl font-black text-rose-900">{patients.length}</p>
                 </div>
                 <div className="p-3 bg-white rounded-xl shadow-md">
                   <Activity className="w-10 h-10 text-rose-600" />
@@ -572,7 +584,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-xs text-amber-700 font-bold uppercase tracking-wide mb-2">Active Clusters</p>
-                  <p className="text-5xl font-black text-amber-900">3</p>
+                  <p className="text-5xl font-black text-amber-900">{activeClusters}</p>
                 </div>
                 <div className="p-3 bg-white rounded-xl shadow-md">
                   <MapPin className="w-10 h-10 text-amber-600" />
@@ -587,7 +599,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-xs text-blue-700 font-bold uppercase tracking-wide mb-2">Teams Deployed</p>
-                  <p className="text-5xl font-black text-blue-900">2</p>
+                  <p className="text-5xl font-black text-blue-900">{teamsDeployed}</p>
                 </div>
                 <div className="p-3 bg-white rounded-xl shadow-md">
                   <Users className="w-10 h-10 text-blue-600" />
