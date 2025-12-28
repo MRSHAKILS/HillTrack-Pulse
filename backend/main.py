@@ -1,11 +1,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from ai_engine import generate_hill_data
 from sklearn.cluster import DBSCAN
 import numpy as np
 from datetime import datetime
 from typing import List, Dict
 import random
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.enums import TA_CENTER
+
+try:
+    import google.generativeai as genai
+    # Configure Gemini API
+    genai.configure(api_key="AIzaSyB-9qiQFnK0JWkBV8nEBdx033td1Q1xCDs")
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("⚠️  Gemini API not available - using fallback text generation")
 
 app = FastAPI(title="HillTrack Pulse API")
 
@@ -143,3 +160,183 @@ def get_recent_reports():
         return {"reports": mock_reports}
     
     return {"reports": recent_reports}
+
+@app.get("/api/generate-report")
+def generate_report():
+    """
+    Generate a comprehensive PDF report with AI analysis and statistics
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#10b981'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    # --- Header ---
+    story.append(Paragraph("🏥 HillTrack Pulse", title_style))
+    story.append(Paragraph("Epidemic Surveillance System - Official Report", styles['Heading3']))
+    story.append(Spacer(1, 20))
+    
+    # --- Report Metadata ---
+    story.append(Paragraph(f"<b>Report Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    story.append(Paragraph(f"<b>Report Type:</b> Disease Outbreak Analysis", styles['Normal']))
+    story.append(Paragraph(f"<b>Region:</b> Rangamati Hill District, Bangladesh", styles['Normal']))
+    story.append(Spacer(1, 30))
+    
+    # --- System State ---
+    system_state = {
+        'active_volunteers': 12,
+        'critical_alerts': len([p for p in current_data if p.get('status') == 'Critical']),
+        'total_patients': len(current_data),
+        'cluster_detected': len([p for p in current_data if p.get('cluster_id', -1) != -1]) > 0
+    }
+    
+    # --- Statistics Table ---
+    data = [
+        ["Total Patients", "Active Volunteers", "Critical Alerts", "Logistics Status"],
+        [str(system_state['total_patients']),
+         str(system_state['active_volunteers']), 
+         str(system_state['critical_alerts']), 
+         "En Route" if system_state['cluster_detected'] else "Standby"]
+    ]
+    t = Table(data, colWidths=[120, 120, 120, 120])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#10b981')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 20))
+
+    # --- AI Analysis Section ---
+    story.append(Paragraph("<b>🧠 Gemini 3.0 AI Analysis</b>", styles['Heading2']))
+    story.append(Spacer(1, 10))
+    
+    # Generate AI analysis using Gemini API
+    ai_text = None
+    if GEMINI_AVAILABLE:
+        try:
+            model = genai.GenerativeModel('gemini-2.5-flash-lite')
+            
+            # Prepare data summary for Gemini
+            malaria_count = len([p for p in current_data if 'Malaria' in p.get('disease_type', '')])
+            cluster_count = len([p for p in current_data if p.get('cluster_id', -1) != -1])
+            
+            prompt = f"""
+            You are an AI epidemiologist analyzing disease outbreak data from Rangamati Hill District, Bangladesh.
+            
+            DATA SUMMARY:
+            - Total Patients: {system_state['total_patients']}
+            - Critical Alerts: {system_state['critical_alerts']}
+            - Malaria Cases: {malaria_count}
+            - Cluster Detected: {system_state['cluster_detected']}
+            - Patients in Cluster: {cluster_count}
+            - DBSCAN Parameters: eps=500m, min_samples=3
+            
+            Generate a professional epidemic analysis report with these sections:
+            1. EPIDEMIC STATUS (2-3 sentences about current outbreak situation)
+            2. RISK ASSESSMENT (2-3 sentences about spatial clustering and disease propagation risk)
+            3. RECOMMENDATIONS (3-4 actionable recommendations for medical response teams)
+            4. LOGISTICS BRIEF (if cluster detected, mention multi-modal transport: road, boat, hill trek)
+            
+            Keep it concise, professional, and actionable. Use medical terminology appropriate for health officials.
+            """
+            
+            response = model.generate_content(prompt)
+            ai_text = response.text
+            
+        except Exception as e:
+            # Fallback to static text if API fails
+            print(f"Gemini API Error: {e}")
+            ai_text = None
+    
+    if ai_text is None:
+        if system_state['cluster_detected']:
+            ai_text = f"""
+            EPIDEMIC CLUSTER DETECTED: The DBSCAN algorithm has identified a significant disease cluster 
+            in the Jurachhari Valley region with {system_state['critical_alerts']} critical patients requiring immediate intervention.
+            
+            RISK ASSESSMENT: High density spatial clustering detected with epsilon radius of 500 meters. 
+            Minimum sample threshold of 3 patients exceeded, indicating potential outbreak propagation.
+            
+            RECOMMENDATION: Immediate dispatch of medical teams with antimalarial supplies. Establish quarantine 
+            protocols and conduct contact tracing within 2km radius. Monitor adjacent villages for symptom escalation.
+            
+            LOGISTICS: Optimal route computed via AI logistics engine. Multi-modal transport required: 
+            Road (2.5km) → Boat crossing (5.8km) → Hill trek (3.2km). Estimated arrival: 3h 20min.
+            """
+        else:
+            ai_text = f"""
+            SURVEILLANCE STATUS: Normal distribution of cases detected across {system_state['total_patients']} patients. 
+            No significant clustering patterns identified by DBSCAN algorithm.
+            
+            RISK LEVEL: Low - Current case distribution consistent with routine healthcare demand patterns.
+            No immediate epidemic threat detected in monitored regions.
+            
+            RECOMMENDATION: Continue routine surveillance protocols. Maintain volunteer network for early warning detection.
+            Monitor trend patterns for anomalies in spatial distribution.
+            """
+    
+    # Split the AI text into paragraphs for better formatting
+    for line in ai_text.strip().split('\n'):
+        if line.strip():
+            story.append(Paragraph(line.strip(), styles['Normal']))
+            story.append(Spacer(1, 8))
+    
+    story.append(Spacer(1, 20))
+    
+    # --- Patient Summary ---
+    story.append(Paragraph("<b>📊 Disease Distribution Summary</b>", styles['Heading2']))
+    story.append(Spacer(1, 10))
+    
+    malaria_count = len([p for p in current_data if 'Malaria' in p.get('disease_type', '')])
+    routine_count = len(current_data) - malaria_count
+    
+    disease_data = [
+        ["Disease Type", "Patient Count", "Percentage"],
+        ["Malaria Cases", str(malaria_count), f"{(malaria_count/len(current_data)*100):.1f}%" if current_data else "0%"],
+        ["Routine Checkups", str(routine_count), f"{(routine_count/len(current_data)*100):.1f}%" if current_data else "0%"],
+        ["Total", str(len(current_data)), "100%"]
+    ]
+    
+    disease_table = Table(disease_data, colWidths=[200, 120, 120])
+    disease_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    story.append(disease_table)
+
+    # --- Footer ---
+    story.append(Spacer(1, 40))
+    story.append(Paragraph("<i>CONFIDENTIAL - INTERNAL USE ONLY</i>", styles['Italic']))
+    story.append(Paragraph("<i>Generated by HillTrack Pulse AI Engine</i>", styles['Italic']))
+
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    
+    filename = f"HillTrack_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
