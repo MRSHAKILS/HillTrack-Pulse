@@ -14,6 +14,8 @@ import {
   RefreshCw
 } from 'lucide-react'
 import HillMap from '../components/HillMap'
+import LogisticsGraph from '../components/LogisticsGraph'
+import LiveFeed from '../components/LiveFeed'
 import axios from 'axios'
 
 // Initial sample patient data
@@ -87,6 +89,10 @@ const AdminDashboard = () => {
   const [activeVolunteers] = useState(12)
   const [pendingSyncs] = useState(5)
   const [criticalAlerts, setCriticalAlerts] = useState(0)
+  
+  // Phase 7: Dispatch Workflow States
+  const [showLogisticsModal, setShowLogisticsModal] = useState(false)
+  const [isDispatched, setIsDispatched] = useState(false)
 
   useEffect(() => {
     // Fetch status from backend
@@ -157,6 +163,19 @@ const AdminDashboard = () => {
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  const handleGenerateRoute = () => {
+    setShowLogisticsModal(true)
+  }
+
+  const handleDispatch = () => {
+    setIsDispatched(true)
+    setShowLogisticsModal(false)
+    // Auto-hide success banner after 10 seconds
+    setTimeout(() => {
+      setIsDispatched(false)
+    }, 10000)
   }
 
   const malariaCount = patients.filter(p => p.disease_type.includes('Malaria')).length
@@ -268,6 +287,27 @@ const AdminDashboard = () => {
         </header>
 
         <div className="p-8">
+          {/* State 3: Success Banner */}
+          {isDispatched && (
+            <div className="mb-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-2xl p-6 border-2 border-green-300 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white rounded-full">
+                  <Package className="w-8 h-8 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-1">✅ Team Dispatched Successfully!</h3>
+                  <p className="text-green-50 text-lg">Medical team en route to Jurachhari Village A Cluster. Route sent to volunteer mobile devices.</p>
+                </div>
+                <button
+                  onClick={() => setIsDispatched(false)}
+                  className="text-white hover:text-green-100 transition text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Top Cards - Premium Light Mode - All in a Row */}
           <div className="grid grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200 hover:shadow-xl transition">
@@ -307,8 +347,11 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Content Area */}
-          {activeTab === 'map' && (
+          {/* Content Area - Grid Layout with LiveFeed Sidebar */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+            {/* Main Content - Takes 3 columns */}
+            <div className="xl:col-span-3">
+              {activeTab === 'map' && (
             <div className="relative">
               {/* Map Container */}
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
@@ -335,7 +378,7 @@ const AdminDashboard = () => {
 
                   {/* Floating AI Panel */}
                   <div className="absolute top-4 right-4 z-[1000]">
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border-2 border-purple-300 max-w-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 border-2 border-purple-300 max-w-sm">
                       <div className="flex items-center gap-3 mb-4">
                         <Brain className="w-8 h-8 text-purple-600" />
                         <div>
@@ -375,6 +418,17 @@ const AdminDashboard = () => {
                         <Brain className={`w-5 h-5 ${isAnalyzing ? 'animate-spin' : ''}`} />
                         {isAnalyzing ? 'ANALYZING...' : 'RUN AI SURVEILLANCE'}
                       </button>
+
+                      {/* State 1: Show Generate Route button after cluster detected */}
+                      {aiResult && aiResult.cluster_detected && !isDispatched && (
+                        <button
+                          onClick={handleGenerateRoute}
+                          className="w-full mt-3 py-3 rounded-lg font-bold text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg transition flex items-center justify-center gap-2 animate-pulse"
+                        >
+                          <Package className="w-5 h-5" />
+                          GENERATE SUPPLY ROUTE
+                        </button>
+                      )}
 
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <div className="space-y-2 text-xs">
@@ -495,21 +549,154 @@ const AdminDashboard = () => {
                 <div className="p-2 bg-emerald-100 rounded-lg">
                   <Package className="w-6 h-6 text-emerald-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800">Logistics Management</h3>
+                <h3 className="text-2xl font-bold text-gray-800">Medical Supply Route Optimization</h3>
               </div>
-              <div className="text-center py-12">
-                <div className="inline-block p-4 bg-gray-100 rounded-2xl mb-4">
-                  <Package className="w-16 h-16 text-gray-400 mx-auto" />
+              
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h4 className="font-semibold text-gray-800 mb-2">Optimal Route to Critical Zone</h4>
+                <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Total Distance</p>
+                    <p className="text-xl font-bold text-emerald-600">11.5 km</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Est. Time</p>
+                    <p className="text-xl font-bold text-blue-600">2.5 hrs</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Transport Modes</p>
+                    <p className="text-xl font-bold text-amber-600">3 Types</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Status</p>
+                    <p className="text-xl font-bold text-rose-600">Ready</p>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-lg font-semibold">Logistics module coming soon...</p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Medical supply tracking, volunteer scheduling, and resource allocation
-                </p>
+              </div>
+
+              <div className="h-[600px] border border-gray-200 rounded-xl overflow-hidden">
+                <LogisticsGraph />
+              </div>
+
+              <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                <h4 className="font-semibold text-gray-800 mb-3">Route Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700">Step 1:</span>
+                    <span className="text-gray-600">Road transport from Upazila Health Complex (2.5 km)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700">Step 2:</span>
+                    <span className="text-gray-600">Boat crossing via Kaptai Lake (5.8 km)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700">Step 3:</span>
+                    <span className="text-gray-600">Hill trek to Village A Cluster (3.2 km)</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+            </div>
+
+            {/* LiveFeed Sidebar - Takes 1 column */}
+            <div className="xl:col-span-1 hidden xl:block">
+              <div className="sticky top-8" style={{ maxHeight: 'calc(100vh - 12rem)' }}>
+                <LiveFeed />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* State 2: Logistics Modal */}
+      {showLogisticsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-8">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-3xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Package className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800">Medical Supply Route Optimization</h3>
+                  <p className="text-sm text-gray-600">Optimal path to epidemic cluster</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLogisticsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-8">
+              {/* Travel Time Stats */}
+              <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <h4 className="font-semibold text-gray-800 mb-4 text-lg">Route Summary</h4>
+                <div className="grid grid-cols-4 gap-6 text-sm">
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Total Distance</p>
+                    <p className="text-3xl font-bold text-emerald-600">11.5 km</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Estimated Time</p>
+                    <p className="text-3xl font-bold text-blue-600">3h 20m</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Transport Modes</p>
+                    <p className="text-3xl font-bold text-amber-600">3 Types</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 font-medium">Route Status</p>
+                    <p className="text-3xl font-bold text-rose-600">Ready</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Logistics Graph */}
+              <div className="h-[500px] border border-gray-200 rounded-xl overflow-hidden mb-6">
+                <LogisticsGraph />
+              </div>
+
+              {/* Route Details */}
+              <div className="mb-6 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                <h4 className="font-semibold text-gray-800 mb-4 text-lg">Route Breakdown</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700 w-16">Step 1:</span>
+                    <span className="text-gray-600">Road transport from Upazila Health Complex (2.5 km, ~30 min)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700 w-16">Step 2:</span>
+                    <span className="text-gray-600">Boat crossing via Kaptai Lake (5.8 km, ~1h 30m)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 bg-amber-500 rounded-full"></div>
+                    <span className="font-medium text-gray-700 w-16">Step 3:</span>
+                    <span className="text-gray-600">Hill trek to Village A Cluster (3.2 km, ~1h 20m)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dispatch Button */}
+              <button
+                onClick={handleDispatch}
+                className="w-full py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg transition flex items-center justify-center gap-3"
+              >
+                <Package className="w-6 h-6" />
+                DISPATCH MEDICAL TEAM
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
