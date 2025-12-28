@@ -13,11 +13,15 @@ import {
   MapPin,
   RefreshCw,
   Terminal,
-  Radio
+  Radio,
+  TrendingUp,
+  TrendingDown,
+  Clock
 } from 'lucide-react'
 import HillMap from '../components/HillMap'
 import LogisticsGraph from '../components/LogisticsGraph'
 import LiveFeed from '../components/LiveFeed'
+import OutbreakChart from '../components/OutbreakChart'
 import axios from 'axios'
 
 // Initial sample patient data
@@ -77,6 +81,13 @@ const initialPatients = [
   }
 ]
 
+// Medical Teams stationed at different Upazila Health Complexes
+const MEDICAL_TEAMS = [
+  { id: "TEAM-A", name: "Rangamati Sadar Unit", lat: 22.6533, lng: 92.1789, status: "Available" },
+  { id: "TEAM-B", name: "Kaptai Rapid Response", lat: 22.5000, lng: 92.2200, status: "Busy" },
+  { id: "TEAM-C", name: "Jurachhari Field Unit", lat: 22.6700, lng: 92.4000, status: "Available" }
+]
+
 const AdminDashboard = () => {
   const { logout, userType } = useAuth()
   const navigate = useNavigate()
@@ -85,7 +96,7 @@ const AdminDashboard = () => {
   const [patients, setPatients] = useState(initialPatients)
   const [backendStatus, setBackendStatus] = useState<string>('Checking...')
   const [isConnected, setIsConnected] = useState(false)
-  const [activeTab, setActiveTab] = useState<'map' | 'logistics'>('map')
+  const [activeTab, setActiveTab] = useState<'map' | 'logistics' | 'trends'>('map')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [aiResult, setAiResult] = useState<any>(null)
   const [activeVolunteers] = useState(12)
@@ -99,6 +110,12 @@ const AdminDashboard = () => {
   const [toastMessage, setToastMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [missionStatus, setMissionStatus] = useState<'idle' | 'dispatched' | 'resolved'>('idle')
+  const [showLogisticsGraph, setShowLogisticsGraph] = useState(false)
+  const [nearestTeamName, setNearestTeamName] = useState('')
+  
+  // Alert Modal States
+  const [showAlertModal, setShowAlertModal] = useState(false)
+  const [alertContent, setAlertContent] = useState({ title: '', message: '', type: 'info' as 'success' | 'error' | 'info' })
   
   // SMS Gateway & System Logs
   const [systemLogs, setSystemLogs] = useState<{time: string, message: string, type: 'info' | 'success' | 'warning'}[]>([
@@ -135,9 +152,14 @@ const AdminDashboard = () => {
     setSystemLogs(prev => [...prev, newLog])
   }
 
+  const showAlert = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setAlertContent({ title, message, type })
+    setShowAlertModal(true)
+  }
+
   const handleRunAI = async () => {
     if (!isConnected) {
-      alert('Backend is offline. Cannot run AI analysis.')
+      showAlert('Backend Offline', 'Cannot run AI analysis. Please check backend connection.', 'error')
       return
     }
 
@@ -173,17 +195,25 @@ const AdminDashboard = () => {
         const criticalCount = updatedPatients.filter((p: any) => p.status === 'Critical').length
         setCriticalAlerts(criticalCount)
         
-        // Show success message
+        // Show success message in UI
         setTimeout(() => {
-          alert(`🚨 AI ANALYSIS COMPLETE!\n\n${result.message}\n\nCritical Patients: ${criticalCount}\nCluster Detected: YES`)
+          showAlert(
+            '🚨 AI ANALYSIS COMPLETE',
+            `${result.message}\n\nCritical Patients: ${criticalCount}\nCluster Detected: YES`,
+            'info'
+          )
         }, 500)
       } else {
-        alert('✅ AI Analysis Complete\n\nNo epidemic clusters detected.\nAll patients within normal distribution.')
+        showAlert(
+          '✅ AI Analysis Complete',
+          'No epidemic clusters detected.\nAll patients within normal distribution.',
+          'success'
+        )
       }
       
     } catch (error) {
       console.error('AI Analysis failed:', error)
-      alert('❌ AI Analysis failed. Please check backend connection.')
+      showAlert('❌ AI Analysis Failed', 'Please check backend connection and try again.', 'error')
     } finally {
       setIsAnalyzing(false)
     }
@@ -193,52 +223,96 @@ const AdminDashboard = () => {
     setShowLogisticsModal(true)
   }
 
+  // Find nearest available medical team to the cluster location
+  const findNearestTeam = (targetLat: number, targetLng: number) => {
+    // Filter for available teams only
+    const availableTeams = MEDICAL_TEAMS.filter(team => team.status === "Available")
+    
+    if (availableTeams.length === 0) {
+      return MEDICAL_TEAMS[0] // Fallback to first team if none available
+    }
+    
+    // Calculate distance for each team and find the closest
+    let nearestTeam = availableTeams[0]
+    let minDistance = Infinity
+    
+    availableTeams.forEach(team => {
+      // Simple Euclidean distance (good enough for small regions)
+      const distance = Math.sqrt(
+        Math.pow(team.lat - targetLat, 2) + Math.pow(team.lng - targetLng, 2)
+      )
+      
+      if (distance < minDistance) {
+        minDistance = distance
+        nearestTeam = team
+      }
+    })
+    
+    return { team: nearestTeam, distance: (minDistance * 111).toFixed(1) } // Convert to km (rough)
+  }
+
   const handleMissionAction = () => {
     if (missionStatus === 'idle') {
-      // Step 1: Dispatch team with SMS Gateway
+      // Step 1: Dispatch team with AI Logistics Optimization
       setShowLogisticsModal(false)
       setIsLoading(true)
       
-      addLog('Preparing SMS payload for field team...', 'info')
+      addLog('Running AI logistics optimization...', 'info')
       
       setTimeout(() => {
+        // Get cluster location (from AI result or default)
+        const clusterLocation = aiResult?.data?.[0] 
+          ? { lat: aiResult.data[0].lat, lng: aiResult.data[0].lng }
+          : { lat: 22.6700, lng: 92.4000 } // Default to Jurachhari Valley
+        
+        // AI Logic: Find nearest available team
+        const { team, distance } = findNearestTeam(clusterLocation.lat, clusterLocation.lng)
+        
+        // Show logistics graph and set team name
+        setShowLogisticsGraph(true)
+        setNearestTeamName(team.name)
+        
+        addLog(`AI selected nearest unit: ${team.name} (${distance} km away)`, 'success')
+        
         // Simulate SMS Gateway API call
         const smsPayload = {
-          recipient: '+8801712345678 (Team Alpha Leader)',
-          message: `🚨 EMERGENCY DISPATCH\nMission: #CLUSTER-402\nLocation: Jurachhari Valley\nCoords: 22.6533, 92.1789\nPriority: HIGH\nPatients: 5\nRoute: See App`,
+          recipient: `+88017*** (${team.id} Leader)`,
+          message: `🚨 EMERGENCY DISPATCH\nMission: #CLUSTER-402\nLocation: Jurachhari Valley\nCoords: ${clusterLocation.lat}, ${clusterLocation.lng}\nPriority: HIGH\nPatients: 5\nRoute: See App`,
           gateway: 'Grameenphone SMS API',
           clusterId: '#CLUSTER-402'
         }
         
         addLog(`GATEWAY: Sending SMS to ${smsPayload.recipient}`, 'warning')
-        addLog(`PAYLOAD: Mission ${smsPayload.clusterId} | Coords: 22.6533, 92.1789`, 'info')
+        addLog(`PAYLOAD: Mission ${smsPayload.clusterId} | Coords: ${clusterLocation.lat}, ${clusterLocation.lng}`, 'info')
         addLog(`SMS delivered via ${smsPayload.gateway} ✓`, 'success')
         addLog('Field team notified. Awaiting confirmation...', 'info')
         
         setIsLoading(false)
         setMissionStatus('dispatched')
         
-        // Show SMS confirmation alert
-        alert(
-          `📨 SMS SENT via GSM Gateway\n\n` +
-          `Recipient: +88017*** (Team Alpha)\n` +
-          `Mission: #CLUSTER-402\n` +
-          `Coordinates: 22.6533, 92.1789\n` +
-          `Location: Jurachhari Valley\n` +
-          `Priority: HIGH\n` +
-          `Patients: 5\n\n` +
-          `✅ Message delivered via Grameenphone API\n` +
-          `(Fallback networks: Robi, Banglalink)`
+        // Show AI-optimized dispatch notification in UI
+        showAlert(
+          '🤖 AI LOGISTICS OPTIMIZED',
+          `Cluster Location: Jurachhari Valley\n` +
+          `Coordinates: ${clusterLocation.lat}, ${clusterLocation.lng}\n\n` +
+          `Nearest Available Unit: ${team.name}\n` +
+          `Team ID: ${team.id}\n` +
+          `Distance: ~${distance} km (River Route)\n` +
+          `Status: ${team.status}\n\n` +
+          `>> DISPATCHING ${team.id} IMMEDIATELY\n\n` +
+          `📨 SMS sent via Grameenphone API\n` +
+          `(Fallback: Robi, Banglalink)`,
+          'success'
         )
         
-        setToastMessage('⚠️ Medical Team En Route to Cluster #402')
+        setToastMessage(`⚠️ ${team.name} En Route to Cluster #402`)
         setShowToast(true)
         
         setTimeout(() => setShowToast(false), 3000)
         
         // Simulate field team acknowledgment
         setTimeout(() => {
-          addLog('SMS ACK received from Team Alpha (+88017***)', 'success')
+          addLog(`SMS ACK received from ${team.id} (+88017***)`, 'success')
           addLog('Team departed from Upazila Health Complex', 'info')
         }, 3000)
       }, 1500)
@@ -303,6 +377,18 @@ const AdminDashboard = () => {
             >
               <Package className="w-5 h-5" />
               <span className="font-semibold">Logistics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('trends')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+                activeTab === 'trends'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="font-semibold">Trends</span>
             </button>
 
             <div className="pt-4 mt-4 border-t border-gray-200">
@@ -464,41 +550,67 @@ const AdminDashboard = () => {
         </header>
 
         <div className="p-8">
-          {/* Top Cards - Premium Light Mode - All in a Row */}
-          <div className="grid grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200 hover:shadow-xl transition">
-              <div className="flex items-center justify-between">
+          {/* Top Cards - Premium Light Mode - 4 Stat Cards with Trend Indicators */}
+          <div className="grid grid-cols-4 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl shadow-lg p-6 border border-rose-200 hover:shadow-xl transition">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-xs text-blue-700 font-bold uppercase tracking-wide mb-2">Active Volunteers</p>
-                  <p className="text-5xl font-black text-blue-900">{activeVolunteers}</p>
+                  <p className="text-xs text-rose-700 font-bold uppercase tracking-wide mb-2">Total Cases</p>
+                  <p className="text-5xl font-black text-rose-900">142</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl shadow-md">
+                  <Activity className="w-10 h-10 text-rose-600" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-rose-700">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm font-bold">+12% vs yesterday</span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-lg p-6 border border-amber-200 hover:shadow-xl transition">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-xs text-amber-700 font-bold uppercase tracking-wide mb-2">Active Clusters</p>
+                  <p className="text-5xl font-black text-amber-900">3</p>
+                </div>
+                <div className="p-3 bg-white rounded-xl shadow-md">
+                  <MapPin className="w-10 h-10 text-amber-600" />
+                </div>
+              </div>
+              <div className="text-sm text-amber-700 font-semibold">
+                Jurachhari, Baghaichhari
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200 hover:shadow-xl transition">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-xs text-blue-700 font-bold uppercase tracking-wide mb-2">Teams Deployed</p>
+                  <p className="text-5xl font-black text-blue-900">2</p>
                 </div>
                 <div className="p-3 bg-white rounded-xl shadow-md">
                   <Users className="w-10 h-10 text-blue-600" />
                 </div>
               </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl shadow-lg p-6 border border-amber-200 hover:shadow-xl transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-amber-700 font-bold uppercase tracking-wide mb-2">Pending Syncs</p>
-                  <p className="text-5xl font-black text-amber-900">{pendingSyncs}</p>
-                </div>
-                <div className="p-3 bg-white rounded-xl shadow-md">
-                  <RefreshCw className="w-10 h-10 text-amber-600" />
-                </div>
+              <div className="text-sm text-blue-700 font-semibold">
+                Team-A, Team-C Active
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl shadow-lg p-6 border border-rose-200 hover:shadow-xl transition">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl shadow-lg p-6 border border-emerald-200 hover:shadow-xl transition">
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-xs text-rose-700 font-bold uppercase tracking-wide mb-2">Critical Alerts</p>
-                  <p className="text-5xl font-black text-rose-900">{criticalAlerts}</p>
+                  <p className="text-xs text-emerald-700 font-bold uppercase tracking-wide mb-2">Avg Response</p>
+                  <p className="text-5xl font-black text-emerald-900">4h15m</p>
                 </div>
                 <div className="p-3 bg-white rounded-xl shadow-md">
-                  <AlertTriangle className="w-10 h-10 text-rose-600" />
+                  <Clock className="w-10 h-10 text-emerald-600" />
                 </div>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-700">
+                <TrendingDown className="w-4 h-4" />
+                <span className="text-sm font-bold">-10% improvement</span>
               </div>
             </div>
           </div>
@@ -530,7 +642,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="relative" style={{ height: '600px' }}>
-                  <HillMap patients={patients} missionStatus={missionStatus} />
+                  <HillMap patients={patients} missionStatus={missionStatus} isScanning={isAnalyzing} />
                 </div>
               </div>
 
@@ -635,31 +747,43 @@ const AdminDashboard = () => {
                 <h3 className="text-2xl font-bold text-gray-800">Medical Supply Route Optimization</h3>
               </div>
               
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                <h4 className="font-semibold text-gray-800 mb-2">Optimal Route to Critical Zone</h4>
-                <div className="grid grid-cols-4 gap-4 text-sm">
+              {!showLogisticsGraph ? (
+                <div className="flex items-center justify-center h-[600px] bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
                   <div className="text-center">
-                    <p className="text-gray-600 font-medium">Total Distance</p>
-                    <p className="text-xl font-bold text-emerald-600">11.5 km</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 font-medium">Est. Time</p>
-                    <p className="text-xl font-bold text-blue-600">2.5 hrs</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 font-medium">Transport Modes</p>
-                    <p className="text-xl font-bold text-amber-600">3 Types</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 font-medium">Status</p>
-                    <p className="text-xl font-bold text-rose-600">Ready</p>
+                    <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h4 className="text-xl font-bold text-gray-600 mb-2">Logistics Route Not Generated</h4>
+                    <p className="text-gray-500">Run AI analysis and dispatch a team to see the optimized route</p>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                    <h4 className="font-semibold text-gray-800 mb-2">Optimal Route to Critical Zone</h4>
+                    <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="text-center">
+                        <p className="text-gray-600 font-medium">Total Distance</p>
+                        <p className="text-xl font-bold text-emerald-600">11.5 km</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-600 font-medium">Est. Time</p>
+                        <p className="text-xl font-bold text-blue-600">2.5 hrs</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-600 font-medium">Transport Modes</p>
+                        <p className="text-xl font-bold text-amber-600">3 Types</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-600 font-medium">Status</p>
+                        <p className="text-xl font-bold text-rose-600">Ready</p>
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="h-[600px] border border-gray-200 rounded-xl overflow-hidden">
-                <LogisticsGraph />
-              </div>
+                  <div className="h-[600px] border border-gray-200 rounded-xl overflow-hidden">
+                    <LogisticsGraph sourceName={nearestTeamName} />
+                  </div>
+                </>
+              )}
 
               <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
                 <h4 className="font-semibold text-gray-800 mb-3">Route Details</h4>
@@ -683,6 +807,20 @@ const AdminDashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Trends Tab */}
+          {activeTab === 'trends' && (
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+              <div className="flex items-center gap-3 mb-6">
+                <BarChart3 className="w-8 h-8 text-emerald-600" />
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800">Disease Outbreak Trends</h3>
+                  <p className="text-sm text-gray-600">7-Day Analysis</p>
+                </div>
+              </div>
+              <OutbreakChart />
+            </div>
+          )}
             </div>
 
             {/* LiveFeed Sidebar - Takes 1 column */}
@@ -695,7 +833,7 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {/* State 2: Logistics Modal */}
+      {/* Logistics Modal */}
       {showLogisticsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-8">
           <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
@@ -743,7 +881,7 @@ const AdminDashboard = () => {
 
               {/* Logistics Graph */}
               <div className="h-[500px] border border-gray-200 rounded-xl overflow-hidden mb-6">
-                <LogisticsGraph />
+                <LogisticsGraph sourceName={nearestTeamName} />
               </div>
 
               {/* Route Details */}
@@ -913,6 +1051,62 @@ const AdminDashboard = () => {
                 className="text-white hover:text-yellow-100 transition text-xl font-bold ml-2"
               >
                 ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {showAlertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[6000] p-8">
+          <div className={`bg-white rounded-2xl shadow-2xl max-w-2xl w-full border-4 ${
+            alertContent.type === 'success' ? 'border-green-500' :
+            alertContent.type === 'error' ? 'border-red-500' :
+            'border-blue-500'
+          }`}>
+            <div className={`p-6 rounded-t-2xl ${
+              alertContent.type === 'success' ? 'bg-gradient-to-r from-green-600 to-emerald-600' :
+              alertContent.type === 'error' ? 'bg-gradient-to-r from-red-600 to-rose-600' :
+              'bg-gradient-to-r from-blue-600 to-indigo-600'
+            }`}>
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-3">
+                  <div className="text-4xl">
+                    {alertContent.type === 'success' ? '✅' :
+                     alertContent.type === 'error' ? '❌' : 'ℹ️'}
+                  </div>
+                  <h2 className="text-2xl font-black">{alertContent.title}</h2>
+                </div>
+                <button
+                  onClick={() => setShowAlertModal(false)}
+                  className="text-white hover:opacity-75 transition text-2xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className={`p-6 rounded-xl border-2 ${
+                alertContent.type === 'success' ? 'bg-green-50 border-green-200' :
+                alertContent.type === 'error' ? 'bg-red-50 border-red-200' :
+                'bg-blue-50 border-blue-200'
+              }`}>
+                <p className="text-gray-800 whitespace-pre-line text-lg leading-relaxed">
+                  {alertContent.message}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowAlertModal(false)}
+                className={`w-full mt-6 py-3 rounded-xl font-bold text-white shadow-lg transition ${
+                  alertContent.type === 'success' ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700' :
+                  alertContent.type === 'error' ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700' :
+                  'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                }`}
+              >
+                CLOSE
               </button>
             </div>
           </div>

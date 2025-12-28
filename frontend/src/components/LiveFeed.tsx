@@ -82,50 +82,52 @@ const LiveFeed = () => {
         <p className="text-sm text-gray-600">Real-time field reports</p>
       </div>
 
-      {/* Reports List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-          </div>
-        ) : reports.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-            <AlertCircle className="w-12 h-12 mb-2" />
-            <p className="text-sm">No reports yet</p>
-          </div>
-        ) : (
-          reports.map((report, index) => (
-            <div
-              key={index}
-              className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 border border-gray-200 hover:shadow-md transition-all"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <User className="w-4 h-4 text-gray-600" />
-                    <h4 className="font-bold text-gray-800">{report.patient_name}</h4>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                    <MapPin className="w-3 h-3" />
-                    <span>{report.location}</span>
-                  </div>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${getSeverityColor(report.severity)}`}>
-                  {report.severity}
-                </span>
-              </div>
-              
-              <div className="bg-blue-50 rounded-lg px-3 py-2 mb-2">
-                <p className="text-sm font-semibold text-blue-800">{report.disease}</p>
-              </div>
-              
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span className="font-mono">{report.volunteer_id}</span>
-                <span>{formatTimestamp(report.timestamp)}</span>
-              </div>
+      {/* Reports List - Scrollable */}
+      <div className="p-4 flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto space-y-3 pr-2" style={{ maxHeight: 'calc(100vh - 24rem)' }}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
             </div>
-          ))
-        )}
+          ) : reports.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+              <AlertCircle className="w-12 h-12 mb-2" />
+              <p className="text-sm">No reports yet</p>
+            </div>
+          ) : (
+            reports.map((report, index) => (
+              <div
+                key={index}
+                className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 border border-gray-200 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="w-4 h-4 text-gray-600" />
+                      <h4 className="font-bold text-gray-800">{report.patient_name}</h4>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                      <MapPin className="w-3 h-3" />
+                      <span>{report.location}</span>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${getSeverityColor(report.severity)}`}>
+                    {report.severity}
+                  </span>
+                </div>
+                
+                <div className="bg-blue-50 rounded-lg px-3 py-2 mb-2">
+                  <p className="text-sm font-semibold text-blue-800">{report.disease}</p>
+                </div>
+                
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span className="font-mono">{report.volunteer_id}</span>
+                  <span>{formatTimestamp(report.timestamp)}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Footer Stats */}
