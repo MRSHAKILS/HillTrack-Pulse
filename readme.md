@@ -31,11 +31,13 @@ A cutting-edge healthcare surveillance platform designed to overcome the unique 
 The Chittagong Hill Tracts (Rangamati, Khagrachari, Bandarban) face critical healthcare challenges:
 
 1. **Limited Internet Connectivity** 📡
+
    - Remote villages have sporadic or no internet access
    - Field volunteers cannot submit patient data in real-time
    - Traditional cloud-based systems fail in offline scenarios
 
 2. **Difficult Terrain & Logistics** 🚤⛰️
+
    - Mountainous regions require multi-modal transport (road → boat → hiking)
    - Medical supply delivery is complex and time-consuming
    - Emergency response requires optimized route planning
@@ -54,12 +56,15 @@ The Chittagong Hill Tracts (Rangamati, Khagrachari, Bandarban) face critical hea
 **HillTrack Pulse** is an intelligent healthcare monitoring system that tackles these challenges through three core innovations:
 
 ### 1. **Offline-First Data Collection** 💾
+
 Field volunteers can submit patient records without internet using localStorage-based queue persistence. Data syncs automatically when connectivity returns.
 
 ### 2. **AI-Powered Epidemic Detection** 🤖
+
 DBSCAN (Density-Based Spatial Clustering) algorithm analyzes geospatial patient data to identify disease clusters in real-time, enabling rapid outbreak response.
 
 ### 3. **Intelligent Logistics Optimization** 🗺️
+
 Graph-based route visualization shows optimal medical supply paths through complex terrain (road → lake crossing → hill trek), with time and distance estimates.
 
 ---
@@ -67,6 +72,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 ## ✨ Key Features
 
 ### 🩺 **Volunteer Dashboard**
+
 - **Offline Mode Toggle**: Enable data entry without internet connectivity
 - **LocalStorage Queue**: Automatic persistence of offline submissions
 - **Batch Sync**: Upload all queued records with visual progress bar
@@ -74,6 +80,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **Responsive Design**: Works on mobile devices in the field
 
 ### 👨‍💼 **Admin Dashboard**
+
 - **Live Surveillance Map**: Real-time visualization of patient locations using Leaflet.js
 - **AI Analysis Panel**: One-click DBSCAN clustering to detect epidemic hotspots
 - **Critical Alerts**: Dynamic counter for high-risk clusters
@@ -86,18 +93,21 @@ Graph-based route visualization shows optimal medical supply paths through compl
   4. **Success**: Dispatch confirmation with mobile notification
 
 ### 🧠 **AI Engine (DBSCAN Clustering)**
+
 - **Algorithm**: Scikit-Learn DBSCAN (eps=0.005, min_samples=3)
 - **Purpose**: Detect spatial disease clusters within ~500m radius
 - **Output**: Marks patients as "Critical" when part of epidemic cluster
 - **Real-time**: Updates map markers from blue → red on detection
 
 ### 📊 **Logistics Optimization**
+
 - **Graph Visualization**: React Flow-based route network
 - **Multi-Modal Transport**: Road (2.5km) → Boat (5.8km) → Hill Trek (3.2km)
 - **Time Estimation**: Total 3h 20m travel time to critical zone
 - **Step-by-Step Breakdown**: Color-coded transport modes with distances
 
 ### 🔄 **Data Sync Pipeline**
+
 - **Volunteer → Backend**: POST `/api/sync` with offline queue
 - **Backend → Admin**: GET `/api/recent-reports` (5-second polling)
 - **Progress Tracking**: Visual 0-100% sync progress bar
@@ -108,6 +118,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 ## 🛠️ Technology Stack
 
 ### **Frontend**
+
 - **Framework**: React 18.3.1 with TypeScript 5.5.3
 - **Build Tool**: Vite 5.4.11 (lightning-fast HMR)
 - **Styling**: Tailwind CSS 3.4.17 (utility-first design)
@@ -118,6 +129,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **HTTP**: Axios 1.6.5
 
 ### **Backend**
+
 - **Framework**: FastAPI 0.109.0 (Python 3.10+)
 - **Server**: Uvicorn 0.27.0 (ASGI server)
 - **AI/ML**: Scikit-learn 1.4.0 (DBSCAN clustering)
@@ -126,6 +138,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **Graph Algorithms**: NetworkX (future route optimization)
 
 ### **Development Tools**
+
 - **Linting**: ESLint 9.15.0
 - **Type Checking**: TypeScript strict mode
 - **Package Manager**: npm
@@ -214,6 +227,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 **This project was developed using GitHub Copilot (Claude 3.5 Sonnet) for code generation, debugging, and architectural design.**
 
 ### Usage Details:
+
 - **Code Generation**: React components, FastAPI endpoints, TypeScript interfaces
 - **Algorithm Implementation**: DBSCAN clustering integration, graph visualization logic
 - **Debugging Assistance**: Error resolution, type safety improvements, performance optimization
@@ -221,6 +235,7 @@ Graph-based route visualization shows optimal medical supply paths through compl
 - **UI/UX Design**: Tailwind CSS styling, responsive layouts, animation transitions
 
 ### Human Contributions:
+
 - Problem analysis and solution architecture
 - Domain-specific healthcare requirements
 - Bangladesh Hill Tracts geographic context
@@ -234,18 +249,21 @@ Graph-based route visualization shows optimal medical supply paths through compl
 ## 🚀 Installation & Setup
 
 ### Prerequisites
+
 - **Node.js**: v18+ (LTS recommended)
 - **Python**: 3.10+ with pip
 - **Git**: Latest version
 - **Internet**: For initial package installation
 
 ### Step 1: Clone Repository
+
 ```bash
 git clone https://github.com/MRSHAKILS/FutureBuilders2025_NSU_BUET_AIUB.exe.git
 cd FutureBuilders2025_NSU_BUET_AIUB.exe
 ```
 
 ### Step 2: Backend Setup
+
 ```bash
 # Navigate to backend directory
 cd backend
@@ -270,6 +288,7 @@ uvicorn main:app --reload
 ```
 
 ### Step 3: Frontend Setup
+
 ```bash
 # Open a new terminal and navigate to frontend directory
 cd frontend
@@ -287,6 +306,7 @@ npm run dev
 ```
 
 ### Step 4: Verify Installation
+
 1. Backend health check: Visit `http://localhost:8000/health`
    - Should return: `{"status": "healthy"}`
 2. Frontend: Visit `http://localhost:5173`
@@ -299,15 +319,18 @@ npm run dev
 ### 🩺 For Field Volunteers
 
 1. **Login**
+
    - Navigate to the application
    - Enter any Volunteer ID and Location
    - Click "Login as Volunteer"
 
 2. **Enable Offline Mode** (when in low connectivity area)
+
    - Toggle the "Limited Internet" switch to ON
    - Icon changes from WiFi to WifiOff
 
 3. **Submit Patient Data**
+
    - Fill in patient name, age, symptoms, location
    - Click "Submit Entry"
    - Data is saved locally (visible in "Pending Sync" alert)
@@ -321,28 +344,33 @@ npm run dev
 ### 👨‍💼 For Administrators
 
 1. **Login**
+
    - Username: `admin`
    - Password: `admin`
    - Click "Login as Admin"
 
 2. **Monitor Live Map**
+
    - View blue markers for normal patient locations
    - Check "Active Volunteers", "Pending Syncs", "Critical Alerts" stats
    - Observe Live Feed sidebar for real-time field reports
 
 3. **Run AI Surveillance**
+
    - Click purple "RUN AI SURVEILLANCE" button
    - Wait for DBSCAN analysis (~1-2 seconds)
    - Map markers turn RED if cluster detected
    - Critical Alerts counter updates
 
 4. **Generate Supply Route**
+
    - Click orange "GENERATE SUPPLY ROUTE" button (appears after cluster detection)
    - Modal opens showing React Flow graph
    - Review route: Upazila Health Complex → Kaptai Lake → Jurachhari → Critical Zone
    - Note estimated time: 3h 20m
 
 5. **Dispatch Medical Team**
+
    - Click green "DISPATCH MEDICAL TEAM" button in modal
    - Success banner appears at top
    - Confirmation: "Team Dispatched to Jurachhari Village A Cluster"
@@ -361,6 +389,7 @@ npm run dev
 ## 📡 API Documentation
 
 ### Base URL
+
 ```
 http://localhost:8000
 ```
@@ -368,8 +397,10 @@ http://localhost:8000
 ### Endpoints
 
 #### `GET /`
+
 **Description**: Root health check  
 **Response**:
+
 ```json
 {
   "status": "HillTrack Pulse Online"
@@ -377,8 +408,10 @@ http://localhost:8000
 ```
 
 #### `GET /health`
+
 **Description**: Backend health status  
 **Response**:
+
 ```json
 {
   "status": "healthy"
@@ -386,8 +419,10 @@ http://localhost:8000
 ```
 
 #### `POST /api/sync`
+
 **Description**: Sync volunteer offline queue to backend  
 **Request Body**:
+
 ```json
 [
   {
@@ -402,7 +437,9 @@ http://localhost:8000
   }
 ]
 ```
+
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -412,8 +449,10 @@ http://localhost:8000
 ```
 
 #### `GET /api/recent-reports`
+
 **Description**: Fetch recent patient reports for live feed (polls every 5 seconds)  
 **Response**:
+
 ```json
 {
   "reports": [
@@ -430,8 +469,10 @@ http://localhost:8000
 ```
 
 #### `POST /api/analyze`
+
 **Description**: Run DBSCAN AI clustering on patient geospatial data  
 **Response**:
+
 ```json
 {
   "success": true,
@@ -451,16 +492,20 @@ http://localhost:8000
 ```
 
 #### `GET /api/generate-report`
+
 **Description**: Generate comprehensive PDF report with system statistics and AI analysis  
 **Response**: Binary PDF file download  
 **Headers**:
+
 ```
 Content-Type: application/pdf
 Content-Disposition: attachment; filename="HillTrack_Report_20251228_143025.pdf"
 ```
+
 **Report Includes**:
+
 - System overview statistics table
-- AI-powered cluster detection analysis  
+- AI-powered cluster detection analysis
 - Critical patient details
 - Geographic analysis
 - Public health recommendations
@@ -508,11 +553,13 @@ HillTrack-Pulse/
 ## 🔑 Demo Credentials
 
 ### Admin Access
+
 - **Username**: `admin`
 - **Password**: `admin`
 - **Features**: Full dashboard, AI surveillance, logistics dispatch
 
 ### Volunteer Access
+
 - **ID**: Any alphanumeric (e.g., "VOL-001")
 - **Location**: Any text (e.g., "Rangamati Village")
 - **Features**: Offline data entry, sync functionality
@@ -522,26 +569,31 @@ HillTrack-Pulse/
 ## 🚀 Future Enhancements
 
 ### Phase 1: Database Integration
+
 - [ ] PostgreSQL with PostGIS for geospatial queries
 - [ ] Historical outbreak pattern analysis
 - [ ] Multi-tenant support for different regions
 
 ### Phase 2: Advanced AI
+
 - [ ] Prophet for time-series disease forecasting
 - [ ] GraphSAGE for optimal supply route planning
 - [ ] Computer vision for symptom detection via photos
 
 ### Phase 3: Mobile App
+
 - [ ] React Native mobile application
 - [ ] GPS-based automatic location tagging
 - [ ] Push notifications for critical alerts
 
 ### Phase 4: Scale & Performance
+
 - [ ] Redis caching for faster API responses
 - [ ] WebSocket for real-time map updates
 - [ ] Load balancing for multiple concurrent users
 
 ### Phase 5: Integration
+
 - [ ] Government health ministry APIs
 - [ ] SMS gateway for offline notifications
 - [ ] Drone delivery route optimization
@@ -551,11 +603,13 @@ HillTrack-Pulse/
 ## 👥 Team & Acknowledgments
 
 ### Development Team
+
 **Project**: HillTrack Pulse  
 **Hackathon**: Future Builders 2025 (NSU, BUET, AIUB)  
-**Focus Area**: Healthcare Technology for Hill Tracts  
+**Focus Area**: Healthcare Technology for Hill Tracts
 
 ### Special Thanks
+
 - **GitHub Copilot** (Claude 3.5 Sonnet): AI-assisted development
 - **Scikit-learn Community**: DBSCAN implementation
 - **React & Vite Teams**: Modern frontend tooling
@@ -563,6 +617,7 @@ HillTrack-Pulse/
 - **Leaflet.js**: Open-source mapping library
 
 ### Inspiration
+
 This project is dedicated to the healthcare workers serving the Chittagong Hill Tracts—from Rangamati's lake villages to Bandarban's mountain peaks. Your tireless efforts to reach every patient, regardless of terrain or connectivity, inspired this solution.
 
 ---
@@ -576,6 +631,7 @@ This project is developed for the Future Builders 2025 Hackathon. All rights res
 ## 📞 Contact & Support
 
 For questions, feedback, or collaboration opportunities:
+
 - **GitHub Repository**: [FutureBuilders2025_NSU_BUET_AIUB.exe](https://github.com/MRSHAKILS/FutureBuilders2025_NSU_BUET_AIUB.exe)
 - **Issue Tracker**: [GitHub Issues](https://github.com/MRSHAKILS/FutureBuilders2025_NSU_BUET_AIUB.exe/issues)
 
@@ -585,6 +641,6 @@ For questions, feedback, or collaboration opportunities:
 
 **Built with ❤️ for the Hill Tracts | Powered by AI | Driven by Impact**
 
-🏔️ HillTrack Pulse - *Healthcare Where It Matters Most*
+🏔️ HillTrack Pulse - _Healthcare Where It Matters Most_
 
 </div>
