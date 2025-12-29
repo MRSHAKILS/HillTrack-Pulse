@@ -5,9 +5,12 @@ import {
   Activity, LogOut, Save, User, MapPin, Stethoscope, Calendar, 
   Wifi, WifiOff, Cloud, CloudOff, RefreshCw, 
   Clock, CheckCircle2, AlertTriangle, Database,
-  BadgeCheck, Shield, FileText, Hash, Trophy, Medal, Crown
+  BadgeCheck, Shield, FileText, Hash, Trophy, Medal, Crown, Brain, Phone
 } from 'lucide-react'
 import axios from 'axios'
+import OCRScanner from '../components/OCRScanner'
+import MedicalAssistant from './MedicalAssistant'
+import EmergencyContacts from './EmergencyContacts'
 
 // Realistic Hill Tracts Locations mapping to Coordinates
 const LOCATIONS = [
@@ -39,6 +42,10 @@ interface PatientData {
   name: string
   age: string
   symptoms: string
+  severity: string
+  status: string
+  volunteerNotes: string
+  medicalHistory: string
   location: string
   lat?: number
   lng?: number
@@ -54,6 +61,10 @@ const VolunteerDashboard = () => {
     name: '',
     age: '',
     symptoms: '',
+    severity: 'Moderate',
+    status: 'Normal',
+    volunteerNotes: '',
+    medicalHistory: '',
     location: '',
     lat: 0,
     lng: 0
@@ -70,7 +81,10 @@ const VolunteerDashboard = () => {
   const [volunteerName] = useState('Field Volunteer #V12345')
   
   // Active view state
-  const [activeView, setActiveView] = useState<'dataEntry' | 'credentials' | 'leaderboard'>('dataEntry')
+  const [activeView, setActiveView] = useState<'dataEntry' | 'credentials' | 'leaderboard' | 'aiAssistant' | 'emergencyContacts'>('dataEntry')
+  
+  // Consultation Queue for AI Assistant
+  const [consultQueue, setConsultQueue] = useState<PatientData[]>([])
 
   // Load offline queue from localStorage on mount
   useEffect(() => {
@@ -78,12 +92,22 @@ const VolunteerDashboard = () => {
     if (savedQueue) {
       setOfflineQueue(JSON.parse(savedQueue))
     }
+    
+    const savedConsultQueue = localStorage.getItem('consultQueue')
+    if (savedConsultQueue) {
+      setConsultQueue(JSON.parse(savedConsultQueue))
+    }
   }, [])
 
   // Save offline queue to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('offlineQueue', JSON.stringify(offlineQueue))
   }, [offlineQueue])
+  
+  // Save consultation queue to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('consultQueue', JSON.stringify(consultQueue))
+  }, [consultQueue])
 
   const showToast = (message: string, type: 'success' | 'warning' | 'error' | 'info') => {
     setToast({ message, type })
@@ -93,6 +117,23 @@ const VolunteerDashboard = () => {
   const handleLogout = () => {
     logout()
     navigate('/')
+  }
+  
+  const handleFlagForAI = () => {
+    // Validate that at least basic info is filled
+    if (!formData.name || !formData.age || !formData.symptoms) {
+      showToast('⚠️ Please fill in patient name, age, and symptoms first', 'warning')
+      return
+    }
+    
+    const consultEntry: PatientData = {
+      ...formData,
+      id: Date.now(),
+      timestamp: new Date().toISOString()
+    }
+    
+    setConsultQueue([...consultQueue, consultEntry])
+    showToast(`🤖 Patient "${formData.name}" added to AI Consultation Queue (${consultQueue.length + 1} pending)`, 'success')
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -123,13 +164,16 @@ const VolunteerDashboard = () => {
           patientName: newEntry.name,
           age: newEntry.age,
           symptoms: newEntry.symptoms,
+          severity: newEntry.severity,
+          status: newEntry.status,
+          volunteerNotes: newEntry.volunteerNotes,
+          medicalHistory: newEntry.medicalHistory,
           location: newEntry.location,
           lat: newEntry.lat,
           lng: newEntry.lng,
           diseaseType: newEntry.symptoms,
           volunteerId: volunteerName,
-          timestamp: newEntry.timestamp,
-          severity: "Moderate"
+          timestamp: newEntry.timestamp
         }
         await axios.post('http://localhost:8000/api/sync', [recordToSync])
         showToast('✅ Data Submitted Successfully!', 'success')
@@ -144,6 +188,10 @@ const VolunteerDashboard = () => {
       name: '',
       age: '',
       symptoms: '',
+      severity: 'Moderate',
+      status: 'Normal',
+      volunteerNotes: '',
+      medicalHistory: '',
       location: '',
       lat: 0,
       lng: 0
@@ -176,13 +224,16 @@ const VolunteerDashboard = () => {
         patientName: record.name,
         age: record.age,
         symptoms: record.symptoms,
+        severity: record.severity,
+        status: record.status,
+        volunteerNotes: record.volunteerNotes,
+        medicalHistory: record.medicalHistory,
         location: record.location,
         lat: record.lat,
         lng: record.lng,
         diseaseType: record.symptoms,
         volunteerId: volunteerName,
-        timestamp: record.timestamp,
-        severity: "Moderate"
+        timestamp: record.timestamp
       }))
 
       // Call backend sync endpoint
@@ -274,6 +325,35 @@ const VolunteerDashboard = () => {
             >
               <Trophy className="w-5 h-5" />
               <span>Leaderboard</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveView('aiAssistant')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+                activeView === 'aiAssistant'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Brain className="w-5 h-5" />
+              <span>AI Medical Assistant</span>
+              {consultQueue.length > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  {consultQueue.length}
+                </span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setActiveView('emergencyContacts')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+                activeView === 'emergencyContacts'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Phone className="w-5 h-5" />
+              <span>Emergency Contacts</span>
             </button>
           </nav>
 
@@ -614,6 +694,16 @@ const VolunteerDashboard = () => {
               </div>
             </div>
           </div>
+        ) : activeView === 'aiAssistant' ? (
+          /* AI Medical Assistant View */
+          <div className="h-[calc(100vh-120px)]">
+            <MedicalAssistant />
+          </div>
+        ) : activeView === 'emergencyContacts' ? (
+          /* Emergency Contacts View */
+          <div className="h-[calc(100vh-120px)] overflow-y-auto">
+            <EmergencyContacts />
+          </div>
         ) : (
           /* Data Entry View */
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -626,8 +716,21 @@ const VolunteerDashboard = () => {
                   ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100' 
                   : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100'
               }`}>
-                <h3 className="font-bold text-gray-800 text-lg">New Patient Record</h3>
-                <p className="text-sm text-gray-500 mt-1">Fill in patient information below</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-lg">New Patient Record</h3>
+                    <p className="text-sm text-gray-500 mt-1">Fill in patient information below</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFlagForAI}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-semibold text-sm shadow-lg transition-all transform hover:-translate-y-0.5"
+                    title="Flag this patient for AI consultation"
+                  >
+                    <Brain className="w-4 h-4" />
+                    Flag for AI
+                  </button>
+                </div>
               </div>
 
               {/* Form Body */}
@@ -670,6 +773,46 @@ const VolunteerDashboard = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Severity Dropdown */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                      Severity Level
+                    </label>
+                    <select
+                      name="severity"
+                      value={formData.severity}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all cursor-pointer"
+                    >
+                      <option value="Low">🟢 Low</option>
+                      <option value="Moderate">🟡 Moderate</option>
+                      <option value="High">🟠 High</option>
+                      <option value="Critical">🔴 Critical</option>
+                    </select>
+                  </div>
+
+                  {/* Status Dropdown */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <CheckCircle2 className="w-4 h-4 text-blue-500" />
+                      Patient Status
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value="Normal">✅ Normal</option>
+                      <option value="Critical">🚨 Critical</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Symptoms Dropdown */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -692,6 +835,50 @@ const VolunteerDashboard = () => {
                     <option value="Nausea">🤢 Nausea</option>
                   </select>
                 </div>
+
+                {/* Volunteer Notes */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                    <FileText className="w-4 h-4 text-indigo-500" />
+                    Volunteer Notes / Updates
+                  </label>
+                  <textarea
+                    name="volunteerNotes"
+                    value={formData.volunteerNotes}
+                    onChange={(e) => setFormData({ ...formData, volunteerNotes: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none"
+                    placeholder="Brief notes about the patient's condition, symptoms timeline, or any relevant observations..."
+                  />
+                </div>
+
+                {/* OCR Scanner Section */}
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-5">
+                  <OCRScanner 
+                    onScanComplete={(text) => {
+                      setFormData({ ...formData, medicalHistory: text })
+                      showToast('📄 Prescription scanned successfully!', 'success')
+                    }}
+                  />
+                </div>
+
+                {/* Medical History (from OCR or manual) */}
+                {formData.medicalHistory && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <FileText className="w-4 h-4 text-green-500" />
+                      Medical History / Prescription (OCR Result)
+                    </label>
+                    <textarea
+                      name="medicalHistory"
+                      value={formData.medicalHistory}
+                      onChange={(e) => setFormData({ ...formData, medicalHistory: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all resize-none"
+                      placeholder="Scanned prescription or medical history..."
+                    />
+                  </div>
+                )}
 
                 {/* Location Dropdown */}
                 <div className="space-y-2">

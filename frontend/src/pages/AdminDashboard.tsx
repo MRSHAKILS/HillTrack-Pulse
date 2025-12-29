@@ -88,6 +88,18 @@ const MEDICAL_TEAMS = [
   { id: "TEAM-C", name: "Jurachhari Field Unit", lat: 22.6700, lng: 92.4000, status: "Available" }
 ]
 
+// Local Field Volunteers Database
+const LOCAL_VOLUNTEERS = [
+  { id: 'V-001', name: 'Abdul Karim', location: 'Jurachhari Valley', phone: '+880 1712-345678', status: 'Active' },
+  { id: 'V-002', name: 'Fatima Begum', location: 'Jurachhari Valley', phone: '+880 1812-987654', status: 'Active' },
+  { id: 'V-003', name: 'Mohammad Salim', location: 'Baghaichhari Hills', phone: '+880 1912-456789', status: 'Active' },
+  { id: 'V-004', name: 'Taslima Khatun', location: 'Rangamati Upazila', phone: '+880 1612-345123', status: 'Active' },
+  { id: 'V-005', name: 'Rashid Ahmed', location: 'Jurachhari Valley', phone: '+880 1512-789456', status: 'Active' },
+  { id: 'V-006', name: 'Shirin Akter', location: 'Kaptai Lake North', phone: '+880 1712-890123', status: 'Active' },
+  { id: 'V-007', name: 'Habibur Rahman', location: 'Belaichhari Remote', phone: '+880 1812-901234', status: 'Active' },
+  { id: 'V-008', name: 'Ayesha Siddiqua', location: 'Baghaichhari Center', phone: '+880 1912-012345', status: 'Active' }
+]
+
 const AdminDashboard = () => {
   const { logout, userType } = useAuth()
   const navigate = useNavigate()
@@ -114,6 +126,10 @@ const AdminDashboard = () => {
   const [missionStatus, setMissionStatus] = useState<'idle' | 'dispatched' | 'resolved'>('idle')
   const [showLogisticsGraph, setShowLogisticsGraph] = useState(false)
   const [nearestTeamName, setNearestTeamName] = useState('')
+  
+  // Phase 8: Patient Manifest Modal States
+  const [showManifestModal, setShowManifestModal] = useState(false)
+  const [currentManifest, setCurrentManifest] = useState<any>(null)
   
   // Alert Modal States
   const [showAlertModal, setShowAlertModal] = useState(false)
@@ -194,6 +210,83 @@ const AdminDashboard = () => {
     setShowAlertModal(true)
   }
 
+  // Generate Patient Manifest for Dispatch
+  const generateManifest = (clusterId: number) => {
+    // Filter patients in the cluster (cluster_id !== -1)
+    const clusterPatients = patients.filter(p => p.cluster_id !== undefined && p.cluster_id !== -1)
+    
+    if (clusterPatients.length === 0) {
+      showAlert('No Cluster Detected', 'Please run AI analysis first to detect epidemic clusters.', 'error')
+      return null
+    }
+
+    // Calculate required supplies based on symptoms and disease types
+    const supplies: string[] = []
+    
+    // Count disease types and symptoms
+    const feverCount = clusterPatients.filter(p => 
+      p.disease_type?.toLowerCase().includes('malaria') || 
+      p.disease_type?.toLowerCase().includes('fever')
+    ).length
+    
+    const rashCount = clusterPatients.filter(p => 
+      p.disease_type?.toLowerCase().includes('dengue') || 
+      p.disease_type?.toLowerCase().includes('rash')
+    ).length
+    
+    // Supply logic
+    if (feverCount > 0) {
+      supplies.push(`Paracetamol (${feverCount * 10} tablets)`)
+      supplies.push(`Antimalarial Medication (${feverCount * 5} doses)`)
+    }
+    
+    if (rashCount > 0) {
+      supplies.push(`Dengue Test Kits (${rashCount} units)`)
+      supplies.push(`IV Fluids (${rashCount * 2} bags)`)
+    }
+    
+    // Always include basics
+    supplies.push(`Medical Gloves (${clusterPatients.length * 2} pairs)`)
+    supplies.push(`Sterile Syringes (${clusterPatients.length * 3} units)`)
+    supplies.push(`Diagnostic Equipment (1 kit)`)
+    
+    // Get cluster location
+    const clusterLocation = clusterPatients[0]
+    const targetVillage = clusterLocation.latitude > 22.66 
+      ? 'Jurachhari Valley' 
+      : clusterLocation.latitude > 22.65
+      ? 'Baghaichhari Hills'
+      : 'Rangamati Upazila'
+    
+    // Filter field volunteers by location
+    const fieldAgents = LOCAL_VOLUNTEERS.filter(v => v.location === targetVillage)
+    
+    // Generate manifest
+    const manifest = {
+      missionId: `MISSION-${Math.floor(Math.random() * 9000) + 1000}`,
+      clusterId: `CLUSTER-${clusterId || 402}`,
+      targetVillage,
+      coordinates: {
+        lat: clusterLocation.latitude.toFixed(4),
+        lng: clusterLocation.longitude.toFixed(4)
+      },
+      patientCount: clusterPatients.length,
+      patients: clusterPatients.map(p => ({
+        name: p.name,
+        age: p.age,
+        diseaseType: p.disease_type,
+        severity: p.severity,
+        status: p.status
+      })),
+      requiredSupplies: supplies,
+      fieldAgents: fieldAgents,
+      timestamp: new Date().toISOString(),
+      priority: clusterPatients.filter(p => p.status === 'Critical').length > 0 ? 'HIGH' : 'MEDIUM'
+    }
+    
+    return manifest
+  }
+
   const handleRunAI = async () => {
     if (!isConnected) {
       showAlert('Backend Offline', 'Cannot run AI analysis. Please check backend connection.', 'error')
@@ -260,7 +353,20 @@ const AdminDashboard = () => {
   }
 
   const handleGenerateRoute = () => {
+    // Generate manifest for the cluster
+    const manifest = generateManifest(402)
+    if (manifest) {
+      setCurrentManifest(manifest)
+      setShowManifestModal(true)
+      addLog(`Manifest generated: ${manifest.missionId}`, 'info')
+    }
+  }
+  
+  const handleConfirmManifest = () => {
+    // Close manifest modal and open logistics modal
+    setShowManifestModal(false)
     setShowLogisticsModal(true)
+    addLog(`Manifest ${currentManifest.missionId} confirmed. Proceeding to dispatch...`, 'success')
   }
 
   // Find nearest available medical team to the cluster location
@@ -879,6 +985,238 @@ const AdminDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Patient Manifest Modal */}
+      {showManifestModal && currentManifest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000] p-8">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 border-b border-red-700 p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl">📋</div>
+                  <div>
+                    <h3 className="text-3xl font-black">PATIENT MANIFEST</h3>
+                    <p className="text-red-100 text-sm font-semibold">Targeted Mission Dispatch Document</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowManifestModal(false)}
+                  className="text-white hover:text-red-200 transition text-2xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              {/* Mission Header */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl p-6 mb-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Mission ID</p>
+                    <p className="text-2xl font-black text-red-600 font-mono">{currentManifest.missionId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Cluster ID</p>
+                    <p className="text-2xl font-black text-orange-600 font-mono">{currentManifest.clusterId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Target Village</p>
+                    <p className="text-xl font-bold text-gray-800">📍 {currentManifest.targetVillage}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Priority Level</p>
+                    <p className={`text-xl font-black ${
+                      currentManifest.priority === 'HIGH' ? 'text-red-600' : 'text-yellow-600'
+                    }`}>🚨 {currentManifest.priority}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-300">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">GPS Coordinates</p>
+                  <p className="text-lg font-mono text-gray-800">
+                    {currentManifest.coordinates.lat}°N, {currentManifest.coordinates.lng}°E
+                  </p>
+                </div>
+              </div>
+
+              {/* Patient List */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xl font-black text-gray-800 flex items-center gap-2">
+                    👥 PATIENT LIST
+                    <span className="text-sm font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                      {currentManifest.patientCount} Patients
+                    </span>
+                  </h4>
+                </div>
+                
+                <div className="bg-white border-2 border-gray-300 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gradient-to-r from-gray-800 to-gray-700 text-white">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">#</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Patient Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Age</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Disease Type</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Severity</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {currentManifest.patients.map((patient: any, index: number) => (
+                          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-4 py-3 text-sm font-bold text-gray-700">{index + 1}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-800">{patient.name}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{patient.age}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{patient.diseaseType}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                patient.severity === 'High' || patient.severity === 'Critical'
+                                  ? 'bg-red-100 text-red-700'
+                                  : patient.severity === 'Moderate'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {patient.severity}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                patient.status === 'Critical'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {patient.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Required Supplies */}
+              <div className="mb-6">
+                <h4 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2">
+                  📦 REQUIRED SUPPLIES
+                  <span className="text-sm font-normal text-gray-500">(AI-Calculated)</span>
+                </h4>
+                
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {currentManifest.requiredSupplies.map((supply: string, index: number) => (
+                      <div key={index} className="flex items-center gap-3 bg-white rounded-lg p-3 border border-blue-200">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        <span className="text-sm font-semibold text-gray-800">{supply}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t-2 border-dashed border-blue-300">
+                    <p className="text-xs text-blue-700 font-semibold">
+                      ℹ️ Supply calculation based on patient symptoms and disease types
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Field Agents in Zone */}
+              {currentManifest.fieldAgents && currentManifest.fieldAgents.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2">
+                    👥 ACTIVE FIELD AGENTS IN ZONE
+                    <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full">
+                      {currentManifest.fieldAgents.length} Available
+                    </span>
+                  </h4>
+                  
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl p-6">
+                    <div className="space-y-3">
+                      {currentManifest.fieldAgents.map((agent: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between bg-white rounded-lg p-4 border border-emerald-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold">
+                              {agent.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800">{agent.name}</p>
+                              <p className="text-xs text-gray-600">{agent.id} • {agent.location}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                              agent.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {agent.status}
+                            </span>
+                            <a 
+                              href={`tel:${agent.phone}`}
+                              className="font-mono text-sm text-emerald-600 hover:text-emerald-800 font-semibold"
+                            >
+                              {agent.phone}
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t-2 border-dashed border-emerald-300">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-emerald-700 font-semibold">
+                          ℹ️ These volunteers are on the ground and will coordinate with the medical team
+                        </p>
+                        <button className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg font-bold text-sm transition-all shadow-md">
+                          📢 Notify All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mission Info */}
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">⚠️</div>
+                  <div>
+                    <p className="font-bold text-yellow-900 text-sm">MISSION BRIEFING</p>
+                    <p className="text-yellow-800 text-xs mt-1">
+                      This is a <span className="font-bold">{currentManifest.priority} PRIORITY</span> medical dispatch to {currentManifest.targetVillage}. 
+                      Team must carry all listed supplies and be prepared for {currentManifest.patientCount} patient interactions. 
+                      Estimated mission duration: 6-8 hours including travel and treatment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setShowManifestModal(false)}
+                  className="py-4 rounded-xl font-bold text-gray-700 text-lg bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 shadow-lg transition"
+                >
+                  ❌ CANCEL
+                </button>
+                <button
+                  onClick={handleConfirmManifest}
+                  className="py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg transition flex items-center justify-center gap-3"
+                >
+                  ✅ CONFIRM & TRANSMIT
+                </button>
+              </div>
+
+              <p className="text-center text-xs text-gray-500 mt-4">
+                Manifest generated at {new Date(currentManifest.timestamp).toLocaleString()} • HillTrack Pulse Command Center
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logistics Modal */}
       {showLogisticsModal && (

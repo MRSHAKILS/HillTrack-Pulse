@@ -122,7 +122,10 @@ def sync_volunteer_data(records: List[Dict]):
             "date": record.get("timestamp", datetime.now().isoformat())[:10],
             "disease_type": record.get("symptoms", record.get("diseaseType", "Unknown Symptoms")),
             "severity": record.get("severity", "Moderate"),
-            "status": "Normal"  # Will be updated by AI analysis if in cluster
+            "status": record.get("status", "Normal"),  # Accept status from volunteer
+            "volunteer_notes": record.get("volunteerNotes", ""),
+            "medical_history": record.get("medicalHistory", ""),  # OCR scanned data
+            "symptoms": record.get("symptoms", "")
         }
         current_data.append(patient_entry)
         next_patient_id += 1
@@ -349,3 +352,95 @@ def generate_report():
         media_type="application/pdf", 
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@app.post("/api/gemini-chat")
+def gemini_chat(payload: Dict):
+    """
+    AI Medical Consultation Chat using Gemini API
+    Accepts user query and patient context data for intelligent responses
+    """
+    user_query = payload.get("user_query", "")
+    patient_data = payload.get("patient_data", None)
+    
+    if not user_query:
+        return {"error": "No query provided"}
+    
+    try:
+        if GEMINI_AVAILABLE:
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            
+            # Build context-aware prompt
+            if patient_data:
+                context_prompt = f"""
+                You are an experienced medical consultant assisting field volunteers in rural Bangladesh (Chittagong Hill Tracts).
+                
+                PATIENT CONTEXT:
+                - Name: {patient_data.get('name', 'Unknown')}
+                - Age: {patient_data.get('age', 'Unknown')} years
+                - Symptoms: {patient_data.get('symptoms', 'Not specified')}
+                - Severity: {patient_data.get('severity', 'Moderate')}
+                - Status: {patient_data.get('status', 'Normal')}
+                - Location: {patient_data.get('location', 'Unknown')}
+                - Volunteer Notes: {patient_data.get('volunteerNotes', 'None')}
+                - Medical History: {patient_data.get('medicalHistory', 'None')}
+                
+                Based on this patient context, answer the following question professionally and concisely:
+                {user_query}
+                
+                Guidelines:
+                - Provide practical, field-applicable advice
+                - Consider limited resources in remote hill areas
+                - Mention red flags that require immediate evacuation
+                - Be concise but thorough (2-3 paragraphs max)
+                - Use clear, simple language for field volunteers
+                """
+            else:
+                context_prompt = f"""
+                You are an experienced medical consultant assisting field volunteers in rural Bangladesh.
+                
+                Question: {user_query}
+                
+                Provide practical medical advice suitable for remote field settings with limited resources.
+                """
+            
+            response = model.generate_content(context_prompt)
+            ai_response = response.text
+            
+            return {
+                "success": True,
+                "response": ai_response,
+                "model": "gemini-2.0-flash-exp",
+                "has_patient_context": patient_data is not None
+            }
+            
+        else:
+            # Fallback response when Gemini is not available
+            fallback = f"""
+            [Fallback Mode - Gemini API not available]
+            
+            Based on the query: "{user_query}"
+            
+            General Medical Advice:
+            - Monitor patient vitals regularly (temperature, pulse, blood pressure)
+            - Ensure adequate hydration and rest
+            - Document any changes in symptoms
+            - If symptoms worsen or new symptoms appear, seek immediate medical attention
+            - For fever: Paracetamol 500mg every 6-8 hours
+            - For severe cases: Arrange emergency transport to nearest health facility
+            
+            Note: This is a generic response. For accurate diagnosis, consult with a qualified medical professional.
+            """
+            
+            return {
+                "success": True,
+                "response": fallback,
+                "model": "fallback",
+                "has_patient_context": patient_data is not None
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "response": "Sorry, I encountered an error processing your request. Please try again."
+        }

@@ -20,7 +20,8 @@
     "react-router-dom": "^7.11.0",
     "reactflow": "^11.11.4",
     "recharts": "^3.6.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.14",
