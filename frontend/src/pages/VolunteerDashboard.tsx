@@ -295,7 +295,7 @@ const VolunteerDashboard = () => {
           <nav className="space-y-2 mb-6">
             <button
               onClick={() => setActiveView('dataEntry')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
                 activeView === 'dataEntry'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -306,7 +306,7 @@ const VolunteerDashboard = () => {
             </button>
             <button
               onClick={() => setActiveView('credentials')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
                 activeView === 'credentials'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -317,7 +317,7 @@ const VolunteerDashboard = () => {
             </button>
             <button
               onClick={() => setActiveView('leaderboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
                 activeView === 'leaderboard'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -329,7 +329,7 @@ const VolunteerDashboard = () => {
             
             <button
               onClick={() => setActiveView('aiAssistant')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
                 activeView === 'aiAssistant'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -346,7 +346,7 @@ const VolunteerDashboard = () => {
             
             <button
               onClick={() => setActiveView('emergencyContacts')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
+              className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all font-semibold ${
                 activeView === 'emergencyContacts'
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
