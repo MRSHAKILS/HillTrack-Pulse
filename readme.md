@@ -105,6 +105,7 @@ cd FutureBuilders2025_NSU_BUET_AIUB.exe
 ```bash
 cd backend
 pip install fastapi uvicorn pandas numpy scikit-learn reportlab google-generativeai
+export GEMINI_API_KEY="your_gemini_api_key"  # Optional: enables Gemini analysis in reports
 python -m uvicorn main:app --reload
 # Server: http://localhost:8000
 ```

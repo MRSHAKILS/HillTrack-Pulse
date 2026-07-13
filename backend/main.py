@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 from typing import List, Dict
 import random
+import os
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -17,9 +18,13 @@ from reportlab.lib.enums import TA_CENTER
 
 try:
     import google.generativeai as genai
-    # Configure Gemini API
-    genai.configure(api_key="AIzaSyB-9qiQFnK0JWkBV8nEBdx033td1Q1xCDs")
-    GEMINI_AVAILABLE = True
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    if gemini_api_key:
+        genai.configure(api_key=gemini_api_key)
+        GEMINI_AVAILABLE = True
+    else:
+        GEMINI_AVAILABLE = False
+        print("⚠️  GEMINI_API_KEY not set - using fallback text generation")
 except ImportError:
     GEMINI_AVAILABLE = False
     print("⚠️  Gemini API not available - using fallback text generation")
